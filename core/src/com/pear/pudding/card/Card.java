@@ -144,7 +144,6 @@ public class Card extends Actor {
     @Override
     public void draw(Batch batch, float parentAlpha) {
         this.cardBackground.draw(batch, 1f);
-        this.image.draw(batch,1f);
         if(this.faceUp){
             if(this.image != null){
                 this.image.draw(batch, 1f);

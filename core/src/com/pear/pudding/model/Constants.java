@@ -9,7 +9,7 @@ public class Constants {
     public static final Integer BOARD_Y_POSITION = 200;
     public static final Integer NUMBER_OF_BOARD_SLOTS = 5;
     public static final Integer NUMBER_OF_HAND_SLOTS = 5;
-    public static final Integer NUMBER_OF_DECK_SLOTS = 2;
+    public static final Integer NUMBER_OF_DECK_SLOTS = 5;
     public static final float WINDOW_WIDTH = 1800;
     public static final float WINDOW_HEIGHT = 1200;
     public static final float CARD_WIDTH = WINDOW_WIDTH / 15;

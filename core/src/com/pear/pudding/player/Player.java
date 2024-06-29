@@ -12,6 +12,8 @@ import com.pear.pudding.model.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Collections;
+
 import static com.pear.pudding.model.Constants.*;
 
 @Getter
@@ -31,12 +33,21 @@ public class Player {
     }
 
     public void initializeDeck(Stage stage) {
+        int i = 0;
+        Card card;
         for(Slot s: this.drawDeck.getSlots()){
-            var card = new Ghost(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+            card = switch (i) {
+                case 0, 3 -> new Ghost(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                case 1, 4 -> new Skeleton(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                case 2, 5 -> new Zombie(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                default -> new Ghoul(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+            };
             card.setCurrentLocation(Location.DRAW);
             s.setCard(card);
             stage.addActor(card);
+            i++;
         }
+        Collections.shuffle(this.drawDeck.getSlots());
     }
 
     public boolean hasEnoughMana(Card card){
