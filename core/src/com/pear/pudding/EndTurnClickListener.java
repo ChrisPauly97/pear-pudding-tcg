@@ -22,12 +22,17 @@ public class EndTurnClickListener extends ClickListener {
             player1.setMyTurn(false);
             player2.setMyTurn(true);
             player2.drawCard();
-            player2.setMana(player2.getMana() + 1);
+            player2.setTotalMana(player2.getTotalMana() + 1);
+            player2.setCurrentMana(player2.getTotalMana());
+            player2.refreshBoard();
         }else if(player2.isMyTurn()){
             player1.setMyTurn(true);
             player2.setMyTurn(false);
             player1.drawCard();
-            player1.setMana(player1.getMana() + 1);
+            player1.setTotalMana(player1.getTotalMana() + 1);
+            player1.setCurrentMana(player1.getTotalMana());
+            player1.refreshBoard();
+
         }
     }
 

@@ -21,10 +21,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.card.*;
-import com.pear.pudding.model.Board;
-import com.pear.pudding.model.DrawDeck;
-import com.pear.pudding.model.Hand;
-import com.pear.pudding.model.Slot;
+import com.pear.pudding.model.*;
 import com.pear.pudding.player.Player;
 
 import static com.pear.pudding.model.Constants.*;
@@ -60,6 +57,8 @@ public class PearPudding extends ApplicationAdapter {
             player2.setDrawDeck(new DrawDeck(WINDOW_WIDTH - 2*CARD_WIDTH,WINDOW_HEIGHT - BUFFER - CARD_HEIGHT,CARD_WIDTH,CARD_HEIGHT));
             player2.setHealthPosition(new Vector2(WINDOW_WIDTH/2, WINDOW_HEIGHT - BUFFER *2));
             player1.setHealthPosition(new Vector2(WINDOW_WIDTH/2, BUFFER *2));
+            player1.setDiscardPile(new DiscardPile(WINDOW_WIDTH - 2*CARD_WIDTH,BUFFER*2 + CARD_HEIGHT,CARD_WIDTH,CARD_HEIGHT));
+            player2.setDiscardPile(new DiscardPile(WINDOW_WIDTH - 2*CARD_WIDTH,WINDOW_HEIGHT - BUFFER*2 - CARD_HEIGHT*2,CARD_WIDTH,CARD_HEIGHT));
 
             camera = new OrthographicCamera();
             camera.setToOrtho(false, 100, 100);
@@ -73,7 +72,8 @@ public class PearPudding extends ApplicationAdapter {
             buttonEndTurn.setBounds(WINDOW_WIDTH - 100 - BUFFER,WINDOW_HEIGHT /2,100,40);
             stage.addActor(buttonEndTurn);
             player1.drawCard();
-            player1.setMana(player1.getMana() + 1);
+            player1.setTotalMana(player1.getTotalMana() + 1);
+            player1.setCurrentMana(player1.getTotalMana());
             inputProcessor = new PuddingInputProcessor(stage, player1, player2, camera);
             InputMultiplexer multiplexer = new InputMultiplexer();
             multiplexer.addProcessor(stage);

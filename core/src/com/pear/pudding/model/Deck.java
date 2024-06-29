@@ -55,7 +55,17 @@ public class Deck {
         }
     }
 
-    public boolean snapTo(Vector3 vec, Card c) {
+    public Slot checkFight(Vector3 vec, Card c){
+        for (Slot s : this.slots) {
+            if (s.contains(vec.x, vec.y)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
+
+    public Slot snapTo(Vector3 vec, Card c) {
         for (Slot s : this.slots) {
             if (s.contains(vec.x, vec.y)) {
                 Gdx.app.log("Before snap", " snapping to slot " + s);
@@ -67,9 +77,9 @@ public class Deck {
                 }
                 Gdx.app.log("Snapped", "Pos after move X=" + c.getX() + " Current Y=" + c.getY());
                 c.setPreviousPosition(new Bound(c.getX(), c.getY(), c.getWidth(), c.getHeight()));
-                return true;
+                return s;
             }
         }
-        return false;
+        return null;
     }
 }

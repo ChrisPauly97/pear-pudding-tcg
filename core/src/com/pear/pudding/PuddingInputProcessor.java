@@ -76,12 +76,12 @@ public class PuddingInputProcessor implements InputProcessor {
         Gdx.app.log("Click", "X=" + x + " Y=" + y + " Button=" + button);
         // Check if mouse pointer hit any object in stage
         Actor hitObject = stage.hit(x, y, true);
-        Gdx.app.log("Left Click Hit", "" + (stage.hit(x, y, true)));
 
         // If mouse clicked
         if (button == Input.Buttons.LEFT) {
             // If we clicked a card, check where the card was and act accordingly
             if (hitObject instanceof Card hitCard) {
+                Gdx.app.log("Left Click Hit", "" + ((Card) hitObject).getAttackCount());
                 if (hitCard.getPlayer().isMyTurn() && hitCard.getCurrentLocation() != ZOOM) {
                     resolveHitObject(hitCard);
                 }
@@ -108,76 +108,19 @@ public class PuddingInputProcessor implements InputProcessor {
     }
 
     public void resolveHitObject(Card hitCard) {
-        var board = hitCard.getPlayer().getBoard();
-        var hand = hitCard.getPlayer().getHand();
-        var drawDeck = hitCard.getPlayer().getDrawDeck();
         Gdx.app.log("Resolve Hit", hitCard.getName() + ", " + hitCard.getCurrentLocation());
         switch (hitCard.getCurrentLocation()) {
             case HAND:
                 this.draggingCard = hitCard;
                 break;
             case DRAW:
-//                for (Slot slot : hand.getSlots()) {
-//                    if (slot.getCard() == null) {
-//                        hitCard.move(slot.getX(), slot.getY());
-//                        hitCard.setFaceUp(true);
-//                        hitCard.setCurrentLocation(HAND);
-//                        slot.setCard(hitCard);
-//                        drawDeck.removeCard(hitCard);
-//                        return;
-//                    } else {
-//                        continue;
-//                    }
-//                }
                 break;
-
             case BOARD:
                 this.draggingCard = hitCard;
                 break;
             case DISCARD:
                 break;
         }
-
-//        var currentLocation = hitCard.getCurrentLocation();
-//         If card is currently in your hand, move it to board
-//        if (currentLocation == HAND) {
-//            for (Slot slot : board.getSlots()) {
-//                if (slot.getCard() == null) {
-//                    hitCard.setPosition(slot.getX(), slot.getY());
-//                    hitCard.getCardBack().setPosition(slot.getX(), slot.getY());
-//                    if (hitCard.getImage() != null) {
-//                        hitCard.getImage().setPosition(slot.getX(), slot.getY());
-//                    }
-//                    hitCard.setFaceUp(true);
-//                    hitCard.setCurrentLocation(BOARD);
-//                    slot.setCard(hitCard);
-//                    hand.removeCard(hitCard);
-//                    return;
-//                } else {
-//                    continue;
-//                }
-//
-//            }
-//            // If card is currently in draw pile, move to hand
-//        } else
-//        if (currentLocation.equals(Location.DRAW)) {
-//            for (Slot slot : hand.getSlots()) {
-//                if (slot.getCard() == null) {
-//                    hitCard.setPosition(slot.getX(), slot.getY());
-//                    hitCard.getCardBack().setPosition(slot.getX(), slot.getY());
-//                    if (hitCard.getImage() != null) {
-//                        hitCard.getImage().setPosition(slot.getX(), slot.getY());
-//                    }
-//                    hitCard.setFaceUp(false);
-//                    hitCard.setCurrentLocation(HAND);
-//                    slot.setCard(hitCard);
-//                    drawDeck.removeCard(hitCard);
-//                    return;
-//                } else {
-//                    continue;
-//                }
-//            }
-//        }
     }
 
     public boolean touchUp(int x, int y, int pointer, int button) {
@@ -185,12 +128,10 @@ public class PuddingInputProcessor implements InputProcessor {
         var coords = camera.unproject(new Vector3(x, y, camera.position.z));
         // If we were dragging a card
         if (this.draggingCard != null) {
+            Player enemyPlayer;
+            enemyPlayer = this.draggingCard.getPlayer().equals(player1) ? player2 : player1;
             // Check if the card we are dragging belongs to our player, if so, check if it's x,y matches any slot in the game
-            if (this.draggingCard.getPlayer().equals(player1)) {
-                snapTo(player1, coords, this.draggingCard);
-            } else if (this.draggingCard.getPlayer().equals(player2)) {
-                snapTo(player2, coords, this.draggingCard);
-            }
+            this.draggingCard.resolveMove(coords, enemyPlayer.getBoard());
         }
         // Reset the delta
         this.deltaCalculated = false;
@@ -203,19 +144,18 @@ public class PuddingInputProcessor implements InputProcessor {
     /**
      * Checks if any slot belonging to the player contains the mouseX/Y
      *
-     * @param player The current player whos turn it is
-     * @param coords The coordinates of the mouse when the snap is triggered
-     * @param c      The card that we want to snap.
+     * @param player1 player 1 object
+     * @param player2 player 2 object
+     * @param coords  The coordinates of the mouse when the snap is triggered
+     * @param c       The card that we want to snap.
      */
-    public void snapTo(Player player, Vector3 coords, Card c) {
-        var boardSnapped = false;
-        if(player.hasEnoughMana(c)){
-            boardSnapped = player.getBoard().snapTo(coords, c);
-            if (boardSnapped) {
-                player.getHand().removeCard(c);
-                player.setMana(player.getMana() - c.getCost());
-            }
-        }else{
+    // TODO refactor this, there must be a nice way to make this not require duplicate code
+    public void playOrReset(Player player1, Player player2, Vector3 coords, Card c) {
+        if (player1.isMyTurn() && c.getPlayer().equals(player1)) {
+            player1.resolveMove(player1, player2.getBoard(), coords, c);
+        } else if (player2.isMyTurn() && c.getPlayer().equals(player2)) {
+            player2.resolveMove(player2, player1.getBoard(), coords, c);
+        } else {
             // return to previous position
             c.move(c.getPreviousPosition().getX(), c.getPreviousPosition().getY(), c.getPreviousPosition().getW(), c.getPreviousPosition().getH());
             c.setPreviousPosition(new Bound(c.getX(), c.getY(), c.getWidth(), c.getHeight()));
@@ -229,20 +169,17 @@ public class PuddingInputProcessor implements InputProcessor {
     }
 
     public boolean touchDragged(int x, int y, int pointer) {
-        var coords = camera.unproject(new Vector3(x, y, camera.position.z));
+        var mouseCoords = camera.unproject(new Vector3(x, y, camera.position.z));
         if (this.draggingCard != null) {
             if (!deltaCalculated) {
-                this.deltaVec = calculatePosDelta(this.draggingCard.getX(), this.draggingCard.getY(), coords.x, coords.y);
+                this.deltaVec = this.draggingCard.calculatePosDelta(mouseCoords.x, mouseCoords.y);
                 this.deltaCalculated = true;
             }
-            this.draggingCard.move(coords.x - this.deltaVec.x, coords.y - this.deltaVec.y);
+            this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
         }
         return false;
     }
 
-    public Vector2 calculatePosDelta(float cardX, float cardY, float mouseX, float mouseY) {
-        return new Vector2(mouseX - cardX, mouseY - cardY);
-    }
 
     public boolean mouseMoved(int x, int y) {
         return false;
