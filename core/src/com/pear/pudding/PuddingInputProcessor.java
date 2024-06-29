@@ -211,13 +211,14 @@ public class PuddingInputProcessor implements InputProcessor {
         var boardSnapped = false;
         if(player.hasEnoughMana(c)){
             boardSnapped = player.getBoard().snapTo(coords, c);
-            if (!boardSnapped) {
-                // return to previous position
-                c.move(c.getPreviousPosition().getX(), c.getPreviousPosition().getY(), c.getPreviousPosition().getW(), c.getPreviousPosition().getH());
-                c.setPreviousPosition(new Bound(c.getX(), c.getY(), c.getWidth(), c.getHeight()));
-            }else{
+            if (boardSnapped) {
+                player.getHand().removeCard(c);
                 player.setMana(player.getMana() - c.getCost());
             }
+        }else{
+            // return to previous position
+            c.move(c.getPreviousPosition().getX(), c.getPreviousPosition().getY(), c.getPreviousPosition().getW(), c.getPreviousPosition().getH());
+            c.setPreviousPosition(new Bound(c.getX(), c.getY(), c.getWidth(), c.getHeight()));
         }
 
     }
