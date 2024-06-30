@@ -1,13 +1,9 @@
 package com.pear.pudding.model;
 
 import com.badlogic.gdx.Gdx;
-import com.pear.pudding.card.Card;
 import com.pear.pudding.enums.Location;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import static com.pear.pudding.model.Constants.*;
 
@@ -24,7 +20,7 @@ public class Board extends Deck {
         setLocation(Location.BOARD);
         setSlotWidth(width / NUMBER_OF_BOARD_SLOTS);
         for(int i = 0; i < NUMBER_OF_BOARD_SLOTS; i++){
-            addSlot(new Slot(getX() + i*this.slotWidth,this.getY(),this.slotWidth, this.getHeight()));
+            addSlot(new Slot(getX() + i*this.slotWidth,this.getY(),this.slotWidth, this.getHeight(), i));
         }
         Gdx.app.log("Board", getSlots().toString());
     }

@@ -1,4 +1,4 @@
-package com.pear.pudding.card;
+package com.pear.pudding.model;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
@@ -8,15 +8,10 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
-import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
-import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.pear.pudding.enums.CardClass;
 import com.pear.pudding.enums.CardType;
 import com.pear.pudding.enums.Location;
-import com.pear.pudding.model.Board;
-import com.pear.pudding.model.Bound;
-import com.pear.pudding.model.Slot;
 import com.pear.pudding.player.Player;
 import lombok.Getter;
 import lombok.Setter;
@@ -58,50 +53,40 @@ public class Card extends Actor {
      */
     private Bound previousPosition;
 
-    public void resolveMove(Vector3 coords, Board enemyBoard){
-        if(player.isMyTurn()){
+    public void moveToPreviousPosition() {
+        move(getPreviousPosition().getX(), getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
+        setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
+    }
+
+    public void resolveMove(Vector3 coordinates, Board enemyBoard) {
+        if (player.isMyTurn()) {
             Slot slot = null;
             if (player.hasEnoughMana(this)) {
-                slot = player.getBoard().snapTo(coords, this);
-                this.attackCount = 0;
+                slot = player.getBoard().snapTo(coordinates, this);
             }
+
             if (slot != null) {
                 player.getHand().removeCard(this);
                 player.setCurrentMana(player.getCurrentMana() - getCost());
             } else {
-                var enemySlot = enemyBoard.checkFight(coords, this);
-                if(enemySlot != null){
-                    var enemyCard = enemySlot.getCard();
-                    if(enemyCard!= null && this.attackCount > 0){
+                Slot enemySlot = enemyBoard.findSlotForFight(coordinates);
+                if (enemySlot != null) {
+                    Card enemyCard = enemySlot.getCard();
+                    if (enemyCard != null && this.attackCount > 0) {
                         fight(enemyCard);
-                    }else {
-                        // return to previous position
-                        move(getPreviousPosition().getX(), getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
-                        setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
+                    } else {
+                        moveToPreviousPosition();
                     }
-                }else {
-                    // return to previous position
-                    move(getPreviousPosition().getX(), getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
-                    setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
+                } else {
+                    moveToPreviousPosition();
                 }
             }
-        }else {
-            // return to previous position
-            this.move(this.getPreviousPosition().getX(), this.getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
-            this.setPreviousPosition(new Bound(this.getX(), this.getY(), this.getWidth(), getHeight()));
+        } else {
+            moveToPreviousPosition();
         }
-
     }
 
     BitmapFont font = new BitmapFont();
-
-    public void adjustHealth(Integer deltaHealth) {
-        this.health += deltaHealth;
-    }
-
-    public void adjustCost(Integer deltaCost) {
-        this.cost += deltaCost;
-    }
 
     public void fight(Card enemy) {
         this.health -= enemy.getAttack();

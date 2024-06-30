@@ -2,10 +2,7 @@ package com.pear.pudding.model;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.math.Vector4;
-import com.pear.pudding.card.Card;
 import com.pear.pudding.enums.Location;
 import lombok.Getter;
 import lombok.Setter;
@@ -38,48 +35,179 @@ public class Deck {
         }
     }
 
-    public Slot firstEmptySlot(){
-        for(Slot s: this.slots){
-            if(s.getCard() == null){
+    public Slot firstEmptySlot() {
+        for (Slot s : this.slots) {
+            if (s.getCard() == null) {
                 return s;
             }
         }
         return null;
     }
 
-    public void removeCard(Card c) {
-        for (Slot s : getSlots()) {
-            if (s.getCard() != null && s.getCard().equals(c)) {
-                s.setCard(null);
+    public void removeCard(Card targetCard) {
+        for (Slot slot : getSlots()) {
+            Card currentCard = slot.getCard();
+            if (currentCard != null && currentCard.equals(targetCard)) {
+                slot.setCard(null);
+                break;
             }
         }
     }
 
-    public Slot checkFight(Vector3 vec, Card c){
-        for (Slot s : this.slots) {
-            if (s.contains(vec.x, vec.y)) {
-                return s;
+    public Slot findSlotForFight(Vector3 targetPosition) {
+        for (Slot slot : slots) {
+            if (slot.contains(targetPosition.x, targetPosition.y)) {
+                return slot;
             }
         }
         return null;
     }
 
 
-    public Slot snapTo(Vector3 vec, Card c) {
-        for (Slot s : this.slots) {
-            if (s.contains(vec.x, vec.y)) {
-                Gdx.app.log("Before snap", " snapping to slot " + s);
-                c.move(s.getX(), s.getY());
-                s.setCard(c);
-                c.setCurrentLocation(this.location);
-                if(this.location != Location.DRAW){
-                    c.setFaceUp(true);
+    public Slot snapTo(Vector3 coords, Card card) {
+        Slot initialTargetSlot = null;
+        Slot finalTargetSlot = null;
+        // Find the slot containing the given coordinates
+        for (Slot slot : slots) {
+            if (slot.contains(coords.x, coords.y)) {
+                initialTargetSlot = slot;
+                break;
+            }
+        }
+
+        if (initialTargetSlot != null) {
+            Slot middleSlot = slots.get(slots.size() / 2);
+            if (middleSlot.getCard() == null) {
+                finalTargetSlot = middleSlot;
+            } else if (isToTheLeftOfMiddle(initialTargetSlot)) {
+                finalTargetSlot = findClosestSlotToLeftOfMiddle(middleSlot);
+                if (finalTargetSlot == null) {
+                    var closestFree = findClosestFreeSlotToRightOfMiddle(middleSlot);
+                    if (closestFree != null) {
+                        shiftCards(initialTargetSlot, closestFree);
+                        finalTargetSlot = initialTargetSlot;
+                    }
                 }
-                Gdx.app.log("Snapped", "Pos after move X=" + c.getX() + " Current Y=" + c.getY());
-                c.setPreviousPosition(new Bound(c.getX(), c.getY(), c.getWidth(), c.getHeight()));
-                return s;
+            } else {
+                finalTargetSlot = findClosestSlotToRightOfMiddle(middleSlot);
+                if (finalTargetSlot == null) {
+                    var closestFree = findClosestFreeSlotToLeftOfMiddle(middleSlot);
+                    if (closestFree != null) {
+                        shiftCards(initialTargetSlot, closestFree);
+                        finalTargetSlot = initialTargetSlot;
+                    }
+                }
+            }
+
+            if(finalTargetSlot != null){
+                // Place the card in the target slot
+                Gdx.app.log("Before snap", " snapping to slot " + finalTargetSlot);
+                card.move(finalTargetSlot.getX(), finalTargetSlot.getY());
+                finalTargetSlot.setCard(card);
+                card.setCurrentLocation(this.location);
+
+                if (this.location != Location.DRAW) {
+                    card.setFaceUp(true);
+                }
+
+                card.setAttackCount(0);
+                Gdx.app.log("Snapped", "Pos after move X=" + card.getX() + " Current Y=" + card.getY());
+                card.setPreviousPosition(new Bound(card.getX(), card.getY(), card.getWidth(), card.getHeight()));
+            }
+        }
+        return finalTargetSlot;
+    }
+
+    private boolean isToTheLeftOfMiddle(Slot foundSlot) {
+        int middleIndex = slots.size() / 2;
+        return foundSlot.getIndex() < middleIndex;
+    }
+
+    private Slot findClosestFreeSlotToRightOfMiddle(Slot middleSlot) {
+        int middleIndex = middleSlot.getIndex();
+        for (int i = middleIndex + 1; i < slots.size(); i++) {
+            Slot currentSlot = slots.get(i);
+            if (currentSlot.getCard() == null) {
+                return currentSlot;
             }
         }
         return null;
+    }
+
+    private Slot findClosestFreeSlotToLeftOfMiddle(Slot middleSlot) {
+        int middleIndex = middleSlot.getIndex();
+        for (int i = middleIndex - 1; i >= 0; i--) {
+            Slot currentSlot = slots.get(i);
+            if (currentSlot.getCard() == null) {
+                return currentSlot;
+            }
+        }
+        return null;
+    }
+
+    private void shiftCards(Slot targetSlot, Slot closestFreeSlot) {
+        // Start index is the target slot index
+        int targetIndex = targetSlot.getIndex();
+        // End index is the index of the closest slot where getCard is null
+        int freeSlotIndex = closestFreeSlot.getIndex();
+        // If targetSlot is left of the end index,
+        if (targetIndex < freeSlotIndex) {
+            for (int i = freeSlotIndex; i > targetIndex; i--) {
+                Slot currentSlot = slots.get(i);
+                if (currentSlot.getCard() == null && i > 0) {
+                    Slot nextSlot = slots.get(i - 1);
+                    var cardToMove = nextSlot.getCard();
+                    currentSlot.setCard(cardToMove);
+                    cardToMove.move(currentSlot.getX(), currentSlot.getY());
+                    nextSlot.setCard(null);
+                }
+            }
+
+        } else if(targetIndex > freeSlotIndex){
+            for (int i = freeSlotIndex; i < targetIndex; i++) {
+                Slot currentSlot = slots.get(i);
+                if (currentSlot.getCard() == null) {
+                    Slot rightSlot = slots.get(i + 1);
+                    var cardToMove = rightSlot.getCard();
+                    currentSlot.setCard(cardToMove);
+                    cardToMove.move(currentSlot.getX(), currentSlot.getY());
+                    rightSlot.setCard(null);
+                }
+            }
+        }
+    }
+
+    private Slot findClosestSlotToRightOfMiddle(Slot middleSlot) {
+        int middleIndex = middleSlot.getIndex();
+        Integer closestIndex = null;
+        for (int i = middleIndex +1; i < slots.size(); i++) {
+            Slot currentSlot = slots.get(i);
+            if (currentSlot.getCard() == null) {
+                closestIndex = i;
+                break;
+            }
+        }
+        if (closestIndex != null) {
+            return slots.get(closestIndex);
+        } else {
+            return null;
+        }
+    }
+
+    private Slot findClosestSlotToLeftOfMiddle(Slot middleSlot) {
+        int middleIndex = middleSlot.getIndex();
+        Integer closestIndex = null;
+        for (int i = middleIndex - 1; i >= 0; i--) {
+            Slot currentSlot = slots.get(i);
+            if (currentSlot.getCard() == null) {
+                closestIndex = i;
+                break;
+            }
+        }
+        if (closestIndex != null) {
+            return slots.get(closestIndex);
+        } else {
+            return null;
+        }
     }
 }

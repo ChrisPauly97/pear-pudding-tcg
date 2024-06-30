@@ -1,6 +1,7 @@
 package com.pear.pudding.card;
 
 import com.badlogic.gdx.graphics.Color;
+import com.pear.pudding.model.Card;
 import com.pear.pudding.player.Player;
 
 import static com.pear.pudding.enums.CardClass.UNDEAD;

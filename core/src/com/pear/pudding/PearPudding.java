@@ -7,6 +7,7 @@ import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
@@ -26,6 +27,12 @@ import com.pear.pudding.player.Player;
 
 import static com.pear.pudding.model.Constants.*;
 
+
+// TODO implement menu screen
+// TODO implement game over
+// TODO implement game win
+// TODO implement card ability
+// TODO fix font resolution
 public class PearPudding extends ApplicationAdapter {
     Stage stage;
     PuddingInputProcessor inputProcessor;
@@ -34,42 +41,34 @@ public class PearPudding extends ApplicationAdapter {
     Player player2;
     Texture p1Texture;
     Texture p2Texture;
+    Texture hero1Texture;
+    Texture hero2Texture;
     Texture background;
+
     //TODO Card Types should have some affinity, i.e. undead are good against living creatures
     // ghouls are good against beings with souls
-
     @Override
     public void create() {
         try {
-            p1Texture =
+            p1Texture = new Texture(Gdx.files.internal("card.png"));
             p2Texture = new Texture(Gdx.files.internal("cardback.jpg"));
             background = new Texture(Gdx.files.internal("background.png"));
-
-            //TODO add a hero object to the player that has an image that is drawn
-            player1 = new Player(true);
-            player2 = new Player(false);
-
-            player1.setBoard(new Board(BOARD_AND_HAND_STARTING_X_POS,BOARD_BUFFER, NUMBER_OF_BOARD_SLOTS * CARD_WIDTH, CARD_HEIGHT ));
-            player1.setHand(new Hand(BOARD_AND_HAND_STARTING_X_POS, BUFFER, NUMBER_OF_HAND_SLOTS * CARD_WIDTH, CARD_HEIGHT));
-            player2.setBoard(new Board(BOARD_AND_HAND_STARTING_X_POS, WINDOW_HEIGHT - BOARD_BUFFER - CARD_HEIGHT, NUMBER_OF_BOARD_SLOTS * CARD_WIDTH, CARD_HEIGHT));
-            player2.setHand(new Hand(BOARD_AND_HAND_STARTING_X_POS,WINDOW_HEIGHT_MINUS_BUFFER, NUMBER_OF_HAND_SLOTS * CARD_WIDTH, CARD_HEIGHT));
-            player1.setDrawDeck(new DrawDeck(WINDOW_WIDTH - 2*CARD_WIDTH,BUFFER,CARD_WIDTH,CARD_HEIGHT));
-            player2.setDrawDeck(new DrawDeck(WINDOW_WIDTH - 2*CARD_WIDTH,WINDOW_HEIGHT - BUFFER - CARD_HEIGHT,CARD_WIDTH,CARD_HEIGHT));
-            player2.setHealthPosition(new Vector2(WINDOW_WIDTH/2, WINDOW_HEIGHT - BUFFER *2));
-            player1.setHealthPosition(new Vector2(WINDOW_WIDTH/2, BUFFER *2));
-            player1.setDiscardPile(new DiscardPile(WINDOW_WIDTH - 2*CARD_WIDTH,BUFFER*2 + CARD_HEIGHT,CARD_WIDTH,CARD_HEIGHT));
-            player2.setDiscardPile(new DiscardPile(WINDOW_WIDTH - 2*CARD_WIDTH,WINDOW_HEIGHT - BUFFER*2 - CARD_HEIGHT*2,CARD_WIDTH,CARD_HEIGHT));
-
+            hero1Texture = new Texture(Gdx.files.internal("ghost.png"));
+            hero2Texture = new Texture(Gdx.files.internal("ghost.png"));
+            player1 = new Player(true, hero1Texture);
+            player2 = new Player(false, hero2Texture);
             camera = new OrthographicCamera();
             camera.setToOrtho(false, 100, 100);
-            FitViewport viewp = new FitViewport(WINDOW_WIDTH,WINDOW_HEIGHT , camera);
+            FitViewport viewp = new FitViewport(WINDOW_WIDTH, WINDOW_HEIGHT, camera);
             stage = new Stage(viewp);
+            stage.addActor(player1.getHero());
+            stage.addActor(player2.getHero());
             player1.initializeDeck(stage);
             player2.initializeDeck(stage);
             Skin skin = new Skin(Gdx.files.internal("uiskin.json"));
             Button buttonEndTurn = new TextButton("End Turn", skin);
             buttonEndTurn.addListener(new EndTurnClickListener(player1, player2));
-            buttonEndTurn.setBounds(WINDOW_WIDTH - 100 - BUFFER,WINDOW_HEIGHT /2,100,40);
+            buttonEndTurn.setBounds(WINDOW_WIDTH - 100 - BUFFER, WINDOW_HEIGHT / 2, 100, 40);
             stage.addActor(buttonEndTurn);
             player1.drawCard();
             player1.setTotalMana(player1.getTotalMana() + 1);
@@ -79,7 +78,7 @@ public class PearPudding extends ApplicationAdapter {
             multiplexer.addProcessor(stage);
             multiplexer.addProcessor(inputProcessor); // Your screen
             Gdx.input.setInputProcessor(multiplexer);
-        }catch (Exception e){
+        } catch (Exception e) {
             Gdx.app.log("Create", "Failed", e);
         }
 
@@ -90,27 +89,30 @@ public class PearPudding extends ApplicationAdapter {
         try {
             ScreenUtils.clear(184, 176, 155, 0);
 
-            stage.getBatch().begin();
-//            Gdx.app.log("Main", stage.getActors().toString());
-            stage.getBatch().draw(background, 0,0,WINDOW_WIDTH, WINDOW_HEIGHT);
-            stage.getBatch().setProjectionMatrix(camera.combined);
-            stage.getActors().forEach(a -> a.draw(stage.getBatch(), 1));
-            for(Slot s: player1.getBoard().getSlots()){
-                stage.getBatch().draw(p1Texture, s.getX(), s.getY(), s.getWidth(), s.getHeight());
-            }
-            for(Slot s: player2.getBoard().getSlots()){
-                stage.getBatch().draw(p1Texture, s.getX(), s.getY(), s.getWidth(), s.getHeight());
+            Batch batch = stage.getBatch();
+            batch.begin();
+
+            batch.draw(background, 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
+            batch.setProjectionMatrix(camera.combined);
+
+            stage.getActors().forEach(actor -> actor.draw(batch, 1));
+
+            for (Slot slot : player1.getBoard().getSlots()) {
+                batch.draw(p1Texture, slot.getX(), slot.getY(), slot.getWidth(), slot.getHeight());
             }
 
-            player1.draw(stage.getBatch());
-            player2.draw(stage.getBatch());
-            stage.getBatch().end();
+            for (Slot slot : player2.getBoard().getSlots()) {
+                batch.draw(p1Texture, slot.getX(), slot.getY(), slot.getWidth(), slot.getHeight());
+            }
+
+            player1.draw(batch);
+            player2.draw(batch);
+
+            batch.end();
         } catch (Exception e) {
             stage.getBatch().end();
-            Gdx.app.log("MainApp", "error {}", e);
+            Gdx.app.error("MainApp", "Error during rendering", e);
         }
-
-
     }
 
     @Override
