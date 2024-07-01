@@ -1,4 +1,4 @@
-package com.pear.pudding;
+package com.pear.pudding.input;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;

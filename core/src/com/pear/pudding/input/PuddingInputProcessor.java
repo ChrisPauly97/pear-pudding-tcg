@@ -1,4 +1,4 @@
-package com.pear.pudding;
+package com.pear.pudding.input;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
@@ -27,7 +27,7 @@ public class PuddingInputProcessor implements InputProcessor {
     private boolean deltaCalculated = false;
     Vector2 deltaVec = new Vector2();
 
-    PuddingInputProcessor(Stage stage, Player player1, Player player2, OrthographicCamera camera) {
+    public PuddingInputProcessor(Stage stage, Player player1, Player player2, OrthographicCamera camera) {
         this.stage = stage;
         this.camera = camera;
         this.player1 = player1;

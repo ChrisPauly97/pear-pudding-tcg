@@ -3,6 +3,7 @@ package com.pear.pudding.client;
 import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.backends.gwt.GwtApplication;
 import com.badlogic.gdx.backends.gwt.GwtApplicationConfiguration;
+import com.pear.pudding.MyGame;
 import com.pear.pudding.PearPudding;
 
 public class HtmlLauncher extends GwtApplication {
@@ -17,6 +18,6 @@ public class HtmlLauncher extends GwtApplication {
 
         @Override
         public ApplicationListener createApplicationListener () {
-                return new PearPudding();
+                return new MyGame();
         }
 }

@@ -14,6 +14,8 @@ public class DesktopLauncher {
 		config.setTitle("Pear Pudding TCG");
 		config.useVsync(true);
 		config.setWindowedMode((int)WINDOW_WIDTH,(int)WINDOW_HEIGHT	);
-		new Lwjgl3Application(new PearPudding(), config);
+		config.setIdleFPS(10);
+		config.setInitialVisible(true);
+		new Lwjgl3Application(new MyGame(), config);
 	}
 }

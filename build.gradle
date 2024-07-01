@@ -14,6 +14,7 @@ buildscript {
         classpath 'com.android.tools.build:gradle:8.1.2'
         classpath 'com.mobidevelop.robovm:robovm-gradle-plugin:2.3.21'
         classpath 'org.projectlombok:lombok:1.18.32'
+        classpath 'com.badlogicgames.gdx:gdx-tools:1.5.4'
     }
 }
 
@@ -52,7 +53,8 @@ project(":desktop") {
         api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
         compileOnly 'org.projectlombok:lombok:1.18.32'
         annotationProcessor 'org.projectlombok:lombok:1.18.32'
-
+        api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
+        api 'com.badlogicgames.gdx:gdx-tools:1.5.4'
     }
 }
 
@@ -87,6 +89,7 @@ project(":html") {
         api "com.google.jsinterop:jsinterop-annotations:2.0.2:sources"
         compileOnly 'org.projectlombok:lombok:1.18.32'
         annotationProcessor 'org.projectlombok:lombok:1.18.32'
+
     }
 }
 
@@ -98,6 +101,8 @@ project(":core") {
         api "com.badlogicgames.gdx:gdx:$gdxVersion"
         compileOnly 'org.projectlombok:lombok:1.18.32'
         annotationProcessor 'org.projectlombok:lombok:1.18.32'
+        api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+
     }
 }
 

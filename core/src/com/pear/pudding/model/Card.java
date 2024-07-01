@@ -1,6 +1,7 @@
 package com.pear.pudding.model;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -52,7 +53,7 @@ public class Card extends Actor {
      * Used to reverse the last action carried out on the card
      */
     private Bound previousPosition;
-
+    private AssetManager manager;
     public void moveToPreviousPosition() {
         move(getPreviousPosition().getX(), getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
         setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
@@ -86,7 +87,6 @@ public class Card extends Actor {
         }
     }
 
-    BitmapFont font = new BitmapFont();
 
     public void fight(Card enemy) {
         this.health -= enemy.getAttack();
@@ -123,6 +123,7 @@ public class Card extends Actor {
 
     public Card(float x, float y, float width, float height, Color color, Integer cost, Integer attack, Integer health,
                 CardType type, CardClass cardClass, String cardText, Player player) {
+        setManager(player.getManager());
         setBounds(x, y, width, height);
         setCurrentLocation(DRAW);
         setAttack(attack);
@@ -208,21 +209,15 @@ public class Card extends Actor {
                 this.image.draw(batch, 1f);
             }
             float width = (float) ((float) getWidth() * 0.85);
-            font.getData().markupEnabled = true;
-            if (this.currentLocation == ZOOM) {
-                font.getData().setScale(2.5f);
-            } else {
-                font.getData().setScale(1f);
+            BitmapFont fontToUse = manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
+            if (this.currentLocation != ZOOM) {
+                fontToUse.getData().setScale(0.5f);
             }
-            font.draw(batch, "[SLATE]" + this.attack, getX() + TEXT_BUFFER, getY() + getHeight(), getWidth() / 10, 0, true);
-            font.draw(batch, "[WHITE]" + getClass().getSimpleName(), getX(), getY() + getHeight(), getWidth(), 1, true);
-            font.draw(batch, "[RED]" + this.health, getX() + getWidth() - BUFFER, getY() + getHeight(), getWidth() / 10, 1, true);
-            if (this.currentLocation == ZOOM) {
-                font.getData().setScale(2.5f);
-            } else {
-                font.getData().setScale(.8f);
-            }
-            font.draw(batch, "[WHITE]" + this.cardText, getX(), getY() + getHeight() / 2, width, 1, true);
+            fontToUse.draw(batch, "[SLATE]" + this.attack, getX() + TEXT_BUFFER, getY() + getHeight(), getWidth() / 10, 0, true);
+            fontToUse.draw(batch, "[WHITE]" + getClass().getSimpleName(), getX(), getY() + getHeight(), getWidth(), 1, true);
+            fontToUse.draw(batch, "[RED]" + this.health, getX() + getWidth() - BUFFER, getY() + getHeight(), getWidth() / 10, 1, true);
+            fontToUse.draw(batch, "[WHITE]" + this.cardText, getX(), getY() + getHeight() / 2, width, 1, true);
+            fontToUse.getData().setScale(1f);
         } else {
             if (this.cardBack != null) {
                 this.cardBack.draw(batch, 1f);
