@@ -93,7 +93,8 @@ public class Deck {
                     Slot currentSlot = slots.get(i);
                     Slot nextSlot = slots.get(i + 1);
                     if (nextSlot.getCard() != null) {
-                        nextSlot.getCard().setPreviousPosition();
+                        // Need to track previous position of all cards we're moving, because if I move the card off the board, the situation needs to reset
+//                        nextSlot.getCard().setPreviousPosition();
                         moveCard(nextSlot.getCard(), currentSlot);
                         nextSlot.setCard(null);
                     }
