@@ -62,7 +62,7 @@ public class Card extends Actor {
     public void resolveMove(Vector3 coordinates, Board enemyBoard) {
         if (player.isMyTurn()) {
             Slot slot = null;
-            if (player.hasEnoughMana(this)) {
+            if (player.hasEnoughMana(this) && this.currentLocation.equals(HAND)) {
                 var initialTargetSlot = player.getBoard().findSlot(coordinates);
                 slot = player.getBoard().snapTo(this, initialTargetSlot);
             }

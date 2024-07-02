@@ -4,7 +4,7 @@ public class Constants {
     public static final float MAX_HAND_SIZE = 5;
     public static final float BUFFER = 20;
     public static final Float TEXT_BUFFER = 5f;
-    public static final float NUMBER_OF_BOARD_SLOTS = 5;
+    public static final int NUMBER_OF_BOARD_SLOTS = 5;
     public static final float NUMBER_OF_HAND_SLOTS = 5;
     public static final float NUMBER_OF_DECK_SLOTS = 5;
     public static float WINDOW_WIDTH = 1800;
