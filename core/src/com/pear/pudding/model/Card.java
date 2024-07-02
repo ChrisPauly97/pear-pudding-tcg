@@ -64,7 +64,7 @@ public class Card extends Actor {
             Slot slot = null;
             if (player.hasEnoughMana(this) && this.currentLocation.equals(HAND)) {
                 var initialTargetSlot = player.getBoard().findSlot(coordinates);
-                slot = player.getBoard().snapTo(this, initialTargetSlot);
+                slot = player.getBoard().snapTo(initialTargetSlot);
             }
 
             if (slot != null) {
@@ -114,7 +114,7 @@ public class Card extends Actor {
                 }
             }
         }else {
-            this.player.getBoard().snapTo(this, player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2));
+            this.player.getBoard().snapTo(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2));
             // return to previous position
             setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
         }

@@ -122,20 +122,13 @@ public class PuddingInputProcessor implements InputProcessor {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
             var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
-            var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
-            if(slot != null) {
+            var slot = this.draggingCard.getPlayer().getBoard().snapTo(initialTargetSlot);
+            if(slot!= null){
                 slot.setCard(this.draggingCard);
-                this.draggingCard.getPlayer().getHand().removeCard(this.draggingCard);
             }else{
                 this.draggingCard.moveToPreviousPosition();
             }
         }
-//            var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
-//            var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
-//            this.stage.getBatch().begin();
-//            this.draggingCard.draw(this.stage.getBatch(), 1f);
-//            this.stage.getBatch().end();
-//        }
         deltaCalculated = false;
         draggingCard = null;
         return false;
@@ -154,16 +147,15 @@ public class PuddingInputProcessor implements InputProcessor {
                 this.deltaCalculated = true;
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
-            if (draggingCard != null) {
-                var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
-                var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
-                if(slot != null){
-                    this.draggingCard.move(slot.getX(), slot.getY());
-                }
-                this.stage.getBatch().begin();
-                this.draggingCard.draw(this.stage.getBatch(), 1f);
-                this.stage.getBatch().end();
+            var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
+            var slot = this.draggingCard.getPlayer().getBoard().snapTo(initialTargetSlot);
+            if(slot != null){
+                this.draggingCard.move(slot.getX(), slot.getY());
             }
+            this.stage.getBatch().begin();
+            this.draggingCard.draw(this.stage.getBatch(), 1f);
+            this.stage.getBatch().end();
+
         }
         return false;
     }

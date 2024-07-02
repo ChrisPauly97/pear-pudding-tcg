@@ -20,7 +20,7 @@ public class SnapToTests {
         // Setup
         Card card = mock(Card.class);
         // Execute
-        Slot result = deck.snapTo(card, null);
+        Slot result = deck.snapTo(null);
 
         // Verify
         assertNull(result);
@@ -36,7 +36,7 @@ public class SnapToTests {
         Slot initialTargetSlot = deck.getSlots().get(0);
 
         // Execute
-        Slot result = deck.snapTo(mock(Card.class), initialTargetSlot);
+        Slot result = deck.snapTo( initialTargetSlot);
 
         // Verify
         assertEquals(leftOfMiddleSlot, result);
@@ -52,7 +52,7 @@ public class SnapToTests {
         Slot initialTargetSlot = deck.getSlots().get(4);
 
         // Execute
-        Slot result = deck.snapTo(mock(Card.class), initialTargetSlot);
+        Slot result = deck.snapTo(initialTargetSlot);
 
         // Verify
         assertEquals(rightOfMiddleSlot, result);
@@ -65,7 +65,7 @@ public class SnapToTests {
         Slot middleSlot = deck.getSlots().get(2);
 
         // Execute
-        Slot result = deck.snapTo(mock(Card.class), middleSlot);
+        Slot result = deck.snapTo(middleSlot);
 
         // Verify
         assertEquals(middleSlot, result);
@@ -83,7 +83,7 @@ public class SnapToTests {
         Slot initialTargetSlot = deck.getSlots().get(4);
 
         // Execute
-        Slot result = deck.snapTo(mock(Card.class), initialTargetSlot);
+        Slot result = deck.snapTo(initialTargetSlot);
 
         // Verify
         assertEquals(rightOfMiddleSlot, result);
