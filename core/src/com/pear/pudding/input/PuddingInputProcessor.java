@@ -123,7 +123,12 @@ public class PuddingInputProcessor implements InputProcessor {
         if (draggingCard != null) {
             var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
             var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
-            slot.setCard(this.draggingCard);
+            if(slot != null) {
+                slot.setCard(this.draggingCard);
+                this.draggingCard.getPlayer().getHand().removeCard(this.draggingCard);
+            }else{
+                this.draggingCard.moveToPreviousPosition();
+            }
         }
 //            var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
 //            var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
