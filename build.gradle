@@ -15,6 +15,9 @@ buildscript {
         classpath 'com.mobidevelop.robovm:robovm-gradle-plugin:2.3.21'
         classpath 'org.projectlombok:lombok:1.18.32'
         classpath 'com.badlogicgames.gdx:gdx-tools:1.5.4'
+        classpath 'org.junit.jupiter:junit-jupiter:5.7.1'
+        classpath 'org.mockito:mockito-core:4.2.0'
+
     }
 }
 
@@ -55,6 +58,12 @@ project(":desktop") {
         annotationProcessor 'org.projectlombok:lombok:1.18.32'
         api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
         api 'com.badlogicgames.gdx:gdx-tools:1.5.4'
+        api 'org.junit.jupiter:junit-jupiter:5.7.1'
+        api 'org.mockito:mockito-core:4.2.0'
+
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        testImplementation 'org.mockito:mockito-core:4.2.0'
     }
 }
 
@@ -102,7 +111,18 @@ project(":core") {
         compileOnly 'org.projectlombok:lombok:1.18.32'
         annotationProcessor 'org.projectlombok:lombok:1.18.32'
         api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+        api 'org.junit.jupiter:junit-jupiter:5.7.1'
+        api 'org.mockito:mockito-core:4.2.0'
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+        testImplementation 'org.mockito:mockito-core:4.2.0'
+    }
 
+    // Configure test task
+    test {
+        useJUnitPlatform() // Use JUnit Platform for running tests
+        testLogging.showStandardStreams = true // Show standard output/error streams in test logs
+        testLogging.exceptionFormat = 'full' // Show full stack trace for exceptions
     }
 }
 

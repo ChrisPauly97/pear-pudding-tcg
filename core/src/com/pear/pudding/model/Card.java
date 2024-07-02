@@ -63,14 +63,15 @@ public class Card extends Actor {
         if (player.isMyTurn()) {
             Slot slot = null;
             if (player.hasEnoughMana(this)) {
-                slot = player.getBoard().snapTo(coordinates, this);
+                var initialTargetSlot = player.getBoard().findSlot(coordinates);
+                slot = player.getBoard().snapTo(this, initialTargetSlot);
             }
 
             if (slot != null) {
                 player.getHand().removeCard(this);
                 player.setCurrentMana(player.getCurrentMana() - getCost());
             } else {
-                Slot enemySlot = enemyBoard.findSlotForFight(coordinates);
+                Slot enemySlot = enemyBoard.findSlot(coordinates);
                 if (enemySlot != null) {
                     Card enemyCard = enemySlot.getCard();
                     if (enemyCard != null && this.attackCount > 0) {
@@ -113,8 +114,8 @@ public class Card extends Actor {
                 }
             }
         }else {
+            this.player.getBoard().snapTo(this, player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2));
             // return to previous position
-            move(getPreviousPosition().getX(), getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
             setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
         }
     }
