@@ -37,7 +37,7 @@ public class Player {
     public Player(boolean isPlayer1, AssetManager manager) {
         this.isMyTurn = isPlayer1;
         this.manager = manager;
-        this.board = new Board(WINDOW_WIDTH / 2 - (CARD_WIDTH * (NUMBER_OF_BOARD_SLOTS / 2)), isPlayer1 ? BOARD_BUFFER : WINDOW_HEIGHT - BOARD_BUFFER - CARD_HEIGHT, NUMBER_OF_BOARD_SLOTS * CARD_WIDTH, CARD_HEIGHT);
+        this.board = new Board(WINDOW_WIDTH / 2 - (CARD_WIDTH * ((float) NUMBER_OF_BOARD_SLOTS / 2)), isPlayer1 ? BOARD_BUFFER : WINDOW_HEIGHT - BOARD_BUFFER - CARD_HEIGHT, NUMBER_OF_BOARD_SLOTS * CARD_WIDTH, CARD_HEIGHT);
         this.hand = new Hand(WINDOW_WIDTH / 2 - (CARD_WIDTH * (NUMBER_OF_HAND_SLOTS / 2)), isPlayer1 ? BUFFER : WINDOW_HEIGHT - CARD_HEIGHT, NUMBER_OF_HAND_SLOTS * CARD_WIDTH, CARD_HEIGHT);
         this.drawDeck = new DrawDeck(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER : WINDOW_HEIGHT - BUFFER - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT);
         this.healthPosition = new Vector2(WINDOW_WIDTH / 2, isPlayer1 ? BUFFER * 3 + CARD_HEIGHT: WINDOW_HEIGHT - CARD_HEIGHT - BUFFER);
