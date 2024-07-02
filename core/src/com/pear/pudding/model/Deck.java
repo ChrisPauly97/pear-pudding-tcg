@@ -9,9 +9,9 @@ import lombok.Setter;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
-import static com.pear.pudding.enums.Side.LEFT;
-import static com.pear.pudding.enums.Side.RIGHT;
+import static com.pear.pudding.enums.Side.*;
 import static com.pear.pudding.model.Constants.CARD_WIDTH;
 
 @Getter
@@ -71,8 +71,7 @@ public class Deck {
         }
         int middleSlotIndex = slots.size() / 2;
         Slot middleSlot = slots.get(middleSlotIndex);
-        if (slotEmpty(getSlots().get(middleSlotIndex))) {
-            moveCard(card, middleSlot);
+        if (slotEmpty(middleSlot)) {
             return middleSlot;
         }
         int cardSlotIndex = initialTargetSlot.getIndex();
@@ -130,22 +129,20 @@ public class Deck {
                 if (initialTargetSlot.getCard() != null) {
                     // Check if there's a slot next to the initial target slot on the left that's free
                     if (cardSlotIndex > 0 && slots.get(cardSlotIndex - 1).getCard() == null) {
-                        moveCard(card, slots.get(cardSlotIndex - 1));
                         return slots.get(cardSlotIndex - 1);
                     } else {
                         // Check if there's a slot on the right of the middle that's free
                         for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
                             if (slots.get(i).getCard() == null) {
-                                // Shift all cards from the initial target slot to the free slot one position to the right
-                                for (int j = cardSlotIndex; j < i; j++) {
+                                // If not balanced, shift one more to the right
+                                for (int j = slots.size() - 1; j > cardSlotIndex; j--) {
                                     Slot currentSlot = slots.get(j);
-                                    Slot nextSlot = slots.get(j + 1);
+                                    Slot previousSlot = slots.get(j - 1);
                                     if (currentSlot.getCard() != null) {
-                                        moveCard(currentSlot.getCard(), nextSlot);
+                                        moveCard(currentSlot.getCard(), previousSlot);
                                         currentSlot.setCard(null);
                                     }
                                 }
-                                moveCard(card, slots.get(i));
                                 return slots.get(i);
                             }
                         }
@@ -153,15 +150,9 @@ public class Deck {
                 }
             } else {
                 Slot newTargetSlot = findNearestSlotToMiddleOnSide(cardSlotSide);
-                if (newTargetSlot == null) {
-                    moveCard(card, initialTargetSlot);
-                } else {
-                    moveCard(card, newTargetSlot);
-                }
-                return newTargetSlot;
+                return Objects.requireNonNullElse(newTargetSlot, initialTargetSlot);
             }
-        }
-        else if (leftCardCount < rightCardCount && cardSlotSide == RIGHT) {
+        } else if (leftCardCount < rightCardCount && cardSlotSide == RIGHT) {
             for (int i = 0; i < slots.size() - 1; i++) {
                 Slot currentSlot = slots.get(i);
                 Slot nextSlot = slots.get(i + 1);
@@ -200,7 +191,6 @@ public class Deck {
                 if (initialTargetSlot.getCard() != null) {
                     // Check if there's a slot next to the initial target slot on the left that's free
                     if (cardSlotIndex > 0 && slots.get(cardSlotIndex - 1).getCard() == null) {
-                        moveCard(card, slots.get(cardSlotIndex - 1));
                         return slots.get(cardSlotIndex - 1);
                     } else {
                         // Check if there's a slot on the right of the middle that's free
@@ -215,29 +205,15 @@ public class Deck {
                                         currentSlot.setCard(null);
                                     }
                                 }
-                                moveCard(card, slots.get(i));
                                 return slots.get(i);
                             }
                         }
                     }
                 }
-            } else {
-                Slot newTargetSlot = findNearestSlotToMiddleOnSide(cardSlotSide);
-                if (newTargetSlot == null) {
-                    moveCard(card, initialTargetSlot);
-                } else {
-                    moveCard(card, newTargetSlot);
-                }
-                return newTargetSlot;
             }
         } else {
             Slot newTargetSlot = findNearestSlotToMiddleOnSide(cardSlotSide);
-            if (newTargetSlot == null) {
-                moveCard(card, initialTargetSlot);
-            } else {
-                moveCard(card, newTargetSlot);
-            }
-            return newTargetSlot;
+            return Objects.requireNonNullElse(newTargetSlot, initialTargetSlot);
         }
         return null;
     }
@@ -249,13 +225,13 @@ public class Deck {
 
     private Slot findNearestSlotToMiddleOnSide(Side side) {
         int middleSlotIndex = slots.size() / 2;
-        if (side == LEFT) {
+        if (side == LEFT || side == MIDDLE) {
             for (int i = middleSlotIndex - 1; i >= 0; i--) {
                 if (slotEmpty(slots.get(i))) {
                     return slots.get(i);
                 }
             }
-        } else {
+        } else if(side == RIGHT) {
             for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
                 if (slotEmpty(slots.get(i))) {
                     return slots.get(i);

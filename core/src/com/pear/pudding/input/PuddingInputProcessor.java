@@ -121,9 +121,16 @@ public class PuddingInputProcessor implements InputProcessor {
     public boolean touchUp(int xCoord, int yCoord, int pointer, int button) {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
-            Player opponentPlayer = draggingCard.getPlayer().equals(player1) ? player2 : player1;
-            draggingCard.resolveMove(coordinates, opponentPlayer.getBoard());
+            var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
+            var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
+            slot.setCard(this.draggingCard);
         }
+//            var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
+//            var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
+//            this.stage.getBatch().begin();
+//            this.draggingCard.draw(this.stage.getBatch(), 1f);
+//            this.stage.getBatch().end();
+//        }
         deltaCalculated = false;
         draggingCard = null;
         return false;
@@ -142,6 +149,16 @@ public class PuddingInputProcessor implements InputProcessor {
                 this.deltaCalculated = true;
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
+            if (draggingCard != null) {
+                var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
+                var slot = this.draggingCard.getPlayer().getBoard().snapTo(this.draggingCard, initialTargetSlot);
+                if(slot != null){
+                    this.draggingCard.move(slot.getX(), slot.getY());
+                }
+                this.stage.getBatch().begin();
+                this.draggingCard.draw(this.stage.getBatch(), 1f);
+                this.stage.getBatch().end();
+            }
         }
         return false;
     }
