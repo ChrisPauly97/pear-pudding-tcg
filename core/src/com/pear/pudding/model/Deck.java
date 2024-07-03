@@ -69,7 +69,7 @@ public class Deck {
     // check if it was not null before
     // If mouseTargetSlot becomes null, move all cards back to their previous position and return null waiting for another drag action
     // if mouseTargetSlot is null, set previousTargetSlot to null and return null
-    public Slot snapTo(Slot mouseTargetSlot, Card draggingCard, Slot previousTargetSlot) {
+    public Slot onHover(Slot mouseTargetSlot, Card draggingCard, Slot previousTargetSlot) {
 //        // If you move the mouse out of the board, move all cards back to their previous position
         if (mouseTargetSlot == null ){
             if(previousTargetSlot != null){
@@ -96,7 +96,7 @@ public class Deck {
 
         int middleSlotIndex = slots.size() / 2;
         Slot middleSlot = slots.get(middleSlotIndex);
-        if (slotEmpty(middleSlot) && !slotHasMiddleAsPreviousPosition()) {
+        if (slotEmpty(middleSlot) && !draggingCard.equals(middleSlot.getCard()) &&  !slotHasMiddleAsPreviousPosition()) {
             return middleSlot;
         } else {
             int nearestLeftSlotIndex = findNearestFreeSlotToMiddleOnSide(LEFT);

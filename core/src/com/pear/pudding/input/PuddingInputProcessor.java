@@ -108,15 +108,10 @@ public class PuddingInputProcessor implements InputProcessor {
     public void resolveHitObject(Card hitCard) {
         Gdx.app.log("Resolve Hit", hitCard.getName() + ", " + hitCard.getCurrentLocation());
         switch (hitCard.getCurrentLocation()) {
-            case HAND:
+            case HAND, BOARD:
                 this.draggingCard = hitCard;
                 break;
-            case DRAW:
-                break;
-            case BOARD:
-                this.draggingCard = hitCard;
-                break;
-            case DISCARD:
+            case DRAW, DISCARD:
                 break;
         }
     }
@@ -125,7 +120,7 @@ public class PuddingInputProcessor implements InputProcessor {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
             var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
-            var slot = this.draggingCard.getPlayer().getBoard().snapTo(initialTargetSlot, this.draggingCard, previousTargetSlot);
+            var slot = this.draggingCard.getPlayer().getBoard().onHover(initialTargetSlot, this.draggingCard, previousTargetSlot);
             if(slot!= null){
                 this.draggingCard.moveToSlot(slot);
             }else{
@@ -151,15 +146,12 @@ public class PuddingInputProcessor implements InputProcessor {
                 this.deltaCalculated = true;
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
-            var targetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
-            if(targetSlot != null){
-                this.previousTargetSlot = targetSlot;
-            }
-            Slot slot = this.draggingCard.getPlayer().getBoard().snapTo(targetSlot, this.draggingCard, this.previousTargetSlot);
-            if(slot != null){
-                this.draggingCard.move(slot.getX(), slot.getY());
-            }else{
-                this.previousTargetSlot = null;
+            if(this.draggingCard.getCurrentLocation() != BOARD){
+                var targetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
+                if(targetSlot != null){
+                    this.previousTargetSlot = targetSlot;
+                    this.draggingCard.getPlayer().getBoard().onHover(targetSlot, this.draggingCard, this.previousTargetSlot);
+                }
             }
             this.stage.getBatch().begin();
             this.draggingCard.draw(this.stage.getBatch(), 1f);

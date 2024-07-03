@@ -165,7 +165,7 @@ public class Card extends Actor {
                 }
             }
         }else {
-            this.player.getBoard().snapTo(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
+            this.player.getBoard().onHover(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
             // return to previous position
             this.moveToPreviousPosition();
         }
