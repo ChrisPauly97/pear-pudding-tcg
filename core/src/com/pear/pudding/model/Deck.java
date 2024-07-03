@@ -65,13 +65,38 @@ public class Deck {
         return null;
     }
 
-    public Slot snapTo(Slot mouseTargetSlot) {
-        if (mouseTargetSlot == null) {
-            return null;
+    // If mouseTarget is currently null
+    // check if it was not null before
+    // If mouseTargetSlot becomes null, move all cards back to their previous position and return null waiting for another drag action
+    // if mouseTargetSlot is null, set previousTargetSlot to null and return null
+    public Slot snapTo(Slot mouseTargetSlot, Card draggingCard, Slot previousTargetSlot) {
+//        // If you move the mouse out of the board, move all cards back to their previous position
+        if (mouseTargetSlot == null ){
+            if(previousTargetSlot != null){
+                for (Slot s : this.slots) {
+                    //if the slot has a card
+                    if (s.getCard() != null) {
+                        // previous slot is the old slot this card used to be in
+                        Slot previousSlot = s.getCard().getPreviousSlot();
+                        if(!previousSlot.equals(s)){
+                            previousSlot.setCard(s.getCard());
+                            s.getCard().moveToPreviousPosition();
+                            s.setCard(null);
+                        }
+                    }
+                }
+                return null;
+            }else{
+
+                return null;
+            }
         }
+            // For each slot, if it's not empty, move the card back
+
+
         int middleSlotIndex = slots.size() / 2;
         Slot middleSlot = slots.get(middleSlotIndex);
-        if (slotEmpty(middleSlot)) {
+        if (slotEmpty(middleSlot) && !slotHasMiddleAsPreviousPosition()) {
             return middleSlot;
         } else {
             int nearestLeftSlotIndex = findNearestFreeSlotToMiddleOnSide(LEFT);
@@ -81,38 +106,49 @@ public class Deck {
             }
             int distanceToLeft = Math.abs(mouseTargetSlot.getIndex() - nearestLeftSlotIndex);
             int distanceToRight = Math.abs(mouseTargetSlot.getIndex() - nearestRightSlotIndex);
-            if (distanceToLeft == 0) {
-                return mouseTargetSlot;
-            }
-            if(distanceToRight == 0){
-                return mouseTargetSlot;
-            }
-            if (distanceToLeft < distanceToRight) {
+
+
+            if (distanceToLeft <=    distanceToRight) {
+                if (distanceToLeft == 0) {
+                    return mouseTargetSlot;
+                }
                 // If not balanced, shift one more to the left
                 for (int i = nearestLeftSlotIndex; i < mouseTargetSlot.getIndex(); i++) {
                     Slot currentSlot = slots.get(i);
                     Slot nextSlot = slots.get(i + 1);
                     if (nextSlot.getCard() != null) {
                         // Need to track previous position of all cards we're moving, because if I move the card off the board, the situation needs to reset
-//                        nextSlot.getCard().setPreviousPosition();
-                        moveCard(nextSlot.getCard(), currentSlot);
-                        nextSlot.setCard(null);
+                        nextSlot.getCard().moveToSlot(currentSlot);
                     }
                 }
                 return mouseTargetSlot;
             } else {
+                if (distanceToRight == 0) {
+                    return mouseTargetSlot;
+                }
                 // If not balanced, shift one more to the right
                 for (int j = nearestRightSlotIndex; j > mouseTargetSlot.getIndex(); j--) {
                     Slot currentSlot = slots.get(j);
                     Slot previousSlot = slots.get(j - 1);
                     if (previousSlot.getCard() != null) {
-                        moveCard(previousSlot.getCard(), currentSlot);
-                        previousSlot.setCard(null);
+                        previousSlot.getCard().moveToSlot(currentSlot);
                     }
                 }
                 return mouseTargetSlot;
             }
         }
+    }
+
+    public boolean slotHasMiddleAsPreviousPosition() {
+        int middleSlotIndex = slots.size() / 2;
+        Slot middleSlot = slots.get(middleSlotIndex);
+        for (Slot s : this.slots) {
+            if (s.getCard() == null) continue;
+            if (s.getCard().getPreviousSlot().equals(middleSlot)) {
+                return true;
+            }
+        }
+        return false;
     }
 
 
@@ -290,13 +326,5 @@ public class Deck {
             }
         }
         return 0;
-    }
-
-    public void moveCard(Card card, Slot slot) {
-        card.move(slot.getX(), slot.getY());
-        card.setCurrentLocation(Location.BOARD);
-        card.setAttackCount(0);
-        card.setPreviousPosition(new Bound(slot.getX(), slot.getY(), slot.getWidth(), slot.getHeight()));
-        slot.setCard(card);
     }
 }

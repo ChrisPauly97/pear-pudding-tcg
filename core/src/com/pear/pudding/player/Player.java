@@ -55,10 +55,10 @@ public class Player {
         Card card;
         for(Slot s: this.drawDeck.getSlots()){
             card = switch (i) {
-                case 0, 3 -> new Ghost(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                case 1, 4 -> new Skeleton(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                case 2, 5 -> new Zombie(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                default -> new Ghoul(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                case 0, 3 -> new Ghost(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
+                case 1, 4 -> new Skeleton(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
+                case 2, 5 -> new Zombie(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
+                default -> new Ghoul(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
             };
             card.setCurrentLocation(Location.DRAW);
             s.setCard(card);
@@ -104,11 +104,7 @@ public class Player {
                 this.drawDeck.removeCard(card);
                 var slot = this.hand.firstEmptySlot();
                 if(slot.getCard() == null){
-                    slot.setCard(card);
-                    card.move(slot.getX(), slot.getY());
-                    card.setFaceUp(true);
-                    card.setPreviousPosition(new Bound(slot.getX(), slot.getY(), slot.getWidth(), slot.getHeight()));
-                    card.setCurrentLocation(Location.HAND);
+                    card.moveToSlot(slot);
                 }else{
                     card.setCurrentLocation(Location.DISCARD);
                 }

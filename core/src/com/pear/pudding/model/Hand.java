@@ -27,7 +27,7 @@ public class Hand extends Deck {
         float middleSlotIndex = NUMBER_OF_HAND_SLOTS / 2;
         for (int i = 0; i < NUMBER_OF_HAND_SLOTS; i++) {
             Side slotSide = i < middleSlotIndex ? Side.LEFT : (i > middleSlotIndex ? Side.RIGHT : Side.MIDDLE);
-            var slot = new Slot(getX() + i * getSlotWidth(), getY(), getSlotWidth(), getHeight(), i);
+            var slot = new Slot(getX() + i * getSlotWidth(), getY(), getSlotWidth(), getHeight(), i, Location.HAND);
             slot.setSide(slotSide);
             this.addSlot(slot);
         }

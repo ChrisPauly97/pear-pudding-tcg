@@ -24,7 +24,7 @@ public class Board extends Deck {
         int middleSlotIndex = NUMBER_OF_BOARD_SLOTS / 2;
         for (int i = 0; i < (float) NUMBER_OF_BOARD_SLOTS; i++) {
             Side slotSide = i < middleSlotIndex ? Side.LEFT : (i > middleSlotIndex ? Side.RIGHT : Side.MIDDLE);
-            var slot = new Slot(getX() + i * getSlotWidth(), getY(), getSlotWidth(), getHeight(), i);
+            var slot = new Slot(getX() + i * getSlotWidth(), getY(), getSlotWidth(), getHeight(), i, Location.BOARD);
             slot.setSide(slotSide);
             this.addSlot(slot);
         }

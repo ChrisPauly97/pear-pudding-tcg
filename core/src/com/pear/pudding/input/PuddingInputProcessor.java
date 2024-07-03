@@ -8,8 +8,10 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.pear.pudding.model.Bound;
 import com.pear.pudding.model.Card;
 import com.pear.pudding.enums.Location;
+import com.pear.pudding.model.Slot;
 import com.pear.pudding.player.Player;
 
 import java.util.HashMap;
@@ -20,6 +22,7 @@ import static com.pear.pudding.enums.Location.*;
 public class PuddingInputProcessor implements InputProcessor {
     Map<Integer, Boolean> stateMap = new HashMap<>();
     Card draggingCard;
+    private Slot previousTargetSlot;
     private final Stage stage;
     private final OrthographicCamera camera;
     private final Player player1;
@@ -122,13 +125,14 @@ public class PuddingInputProcessor implements InputProcessor {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
             var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(coordinates);
-            var slot = this.draggingCard.getPlayer().getBoard().snapTo(initialTargetSlot);
+            var slot = this.draggingCard.getPlayer().getBoard().snapTo(initialTargetSlot, this.draggingCard, previousTargetSlot);
             if(slot!= null){
-                slot.setCard(this.draggingCard);
+                this.draggingCard.moveToSlot(slot);
             }else{
                 this.draggingCard.moveToPreviousPosition();
             }
         }
+        this.previousTargetSlot = null;
         deltaCalculated = false;
         draggingCard = null;
         return false;
@@ -147,10 +151,15 @@ public class PuddingInputProcessor implements InputProcessor {
                 this.deltaCalculated = true;
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
-            var initialTargetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
-            var slot = this.draggingCard.getPlayer().getBoard().snapTo(initialTargetSlot);
+            var targetSlot = this.draggingCard.getPlayer().getBoard().findSlot(mouseCoords);
+            if(targetSlot != null){
+                this.previousTargetSlot = targetSlot;
+            }
+            Slot slot = this.draggingCard.getPlayer().getBoard().snapTo(targetSlot, this.draggingCard, this.previousTargetSlot);
             if(slot != null){
                 this.draggingCard.move(slot.getX(), slot.getY());
+            }else{
+                this.previousTargetSlot = null;
             }
             this.stage.getBatch().begin();
             this.draggingCard.draw(this.stage.getBatch(), 1f);

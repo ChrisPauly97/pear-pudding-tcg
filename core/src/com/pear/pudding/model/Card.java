@@ -48,87 +48,20 @@ public class Card extends Actor {
      * Determines whether the card display its text and image or the card back.
      */
     private boolean faceUp = false;
-    /**
-     * Stores the previous position of the card
-     * Used to reverse the last action carried out on the card
-     */
-    private Bound previousPosition;
+    private Slot currentSlot;
+    private Slot previousSlot;
     private AssetManager manager;
-    public void moveToPreviousPosition() {
-        move(getPreviousPosition().getX(), getPreviousPosition().getY(), getPreviousPosition().getW(), getPreviousPosition().getH());
-        setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
-    }
-
-    public void resolveMove(Vector3 coordinates, Board enemyBoard) {
-        if (player.isMyTurn()) {
-            Slot slot = null;
-            if (player.hasEnoughMana(this) && this.currentLocation.equals(HAND)) {
-                var initialTargetSlot = player.getBoard().findSlot(coordinates);
-                slot = player.getBoard().snapTo(initialTargetSlot);
-            }
-
-            if (slot != null) {
-                player.getHand().removeCard(this);
-                player.setCurrentMana(player.getCurrentMana() - getCost());
-            } else {
-                Slot enemySlot = enemyBoard.findSlot(coordinates);
-                if (enemySlot != null) {
-                    Card enemyCard = enemySlot.getCard();
-                    if (enemyCard != null && this.attackCount > 0) {
-                        fight(enemyCard);
-                    } else {
-                        moveToPreviousPosition();
-                    }
-                } else {
-                    moveToPreviousPosition();
-                }
-            }
-        } else {
-            moveToPreviousPosition();
-        }
-    }
-
-
-    public void fight(Card enemy) {
-        this.health -= enemy.getAttack();
-        enemy.health -= getAttack();
-        if (enemy.health <= 0) {
-            enemy.setCurrentLocation(DISCARD);
-            for(Slot s: enemy.getPlayer().getDiscardPile().getSlots()){
-                if (s.getCard() == null) {
-                    enemy.move(s.getX(), s.getY());
-                    break;
-                }
-            }
-        }else {
-            // return to previous position
-            enemy.move(enemy.getPreviousPosition().getX(), enemy.getPreviousPosition().getY(), enemy.getPreviousPosition().getW(), enemy.getPreviousPosition().getH());
-            enemy.setPreviousPosition(new Bound(enemy.getX(), enemy.getY(), enemy.getWidth(), enemy.getHeight()));
-        }
-        if (this.health <= 0) {
-            setCurrentLocation(DISCARD);
-            for(Slot s: getPlayer().getDiscardPile().getSlots()){
-                if (s.getCard() == null) {
-                    move(s.getX(), s.getY());
-                    break;
-                }
-            }
-        }else {
-            this.player.getBoard().snapTo(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2));
-            // return to previous position
-            setPreviousPosition(new Bound(getX(), getY(), getWidth(), getHeight()));
-        }
-    }
-
     private Location currentLocation;
 
+
     public Card(float x, float y, float width, float height, Color color, Integer cost, Integer attack, Integer health,
-                CardType type, CardClass cardClass, String cardText, Player player) {
+                CardType type, CardClass cardClass, String cardText, Player player, Slot slot) {
         setManager(player.getManager());
         setBounds(x, y, width, height);
         setCurrentLocation(DRAW);
         setAttack(attack);
-        setPreviousPosition(new Bound(x, y, width, height));
+        setPreviousSlot(slot);
+        setCurrentSlot(slot);
         setHealth(health);
         setCost(cost);
         setCardType(type);
@@ -136,6 +69,7 @@ public class Card extends Actor {
         setCardText(cardText);
         setColor(color);
         setPlayer(player);
+        setFaceUp(true);
         Texture texture = new Texture(Gdx.files.internal("cardback.jpg"));
         var img = new Image(texture);
         img.setBounds(x, y, width, height);
@@ -154,9 +88,93 @@ public class Card extends Actor {
 //        });
     }
 
-    public void zoom() {
-        this.previousPosition.setBounds(getX(), getY(), getWidth(), getHeight());
+    public void moveToPreviousPosition() {
+        if(currentSlot != previousSlot) {
+            move(getPreviousSlot().getX(), getPreviousSlot().getY());
+            var oldSlot = previousSlot;
+            currentSlot.setCard(null);
+            previousSlot = currentSlot;
+            currentSlot = oldSlot;
+            currentSlot.setCard(this);
+            currentLocation = oldSlot.location;
+        }
+    }
 
+    public void moveToSlot(Slot s) {
+        this.currentLocation = s.getLocation();
+        move(s.getX(), s.getY());
+        previousSlot.setCard(null);
+        this.currentSlot.setCard(null);
+        previousSlot = this.currentSlot;
+        s.setCard(this);
+        currentSlot = s;
+        Gdx.app.log("Test", "Hi");
+    }
+
+//    public void resolveMove(Vector3 coordinates, Board enemyBoard) {
+//        if (player.isMyTurn()) {
+//            Slot slot = null;
+//            if (player.hasEnoughMana(this) && this.currentLocation.equals(HAND)) {
+//                var initialTargetSlot = player.getBoard().findSlot(coordinates);
+//                slot = player.getBoard().snapTo(initialTargetSlot,this, null);
+//            }
+//
+//            if (slot != null) {
+//                player.getHand().removeCard(this);
+//                player.setCurrentMana(player.getCurrentMana() - getCost());
+//            } else {
+//                Slot enemySlot = enemyBoard.findSlot(coordinates);
+//                if (enemySlot != null) {
+//                    Card enemyCard = enemySlot.getCard();
+//                    if (enemyCard != null && this.attackCount > 0) {
+//                        fight(enemyCard);
+//                    } else {
+//                        moveToPreviousPosition();
+//                    }
+//                } else {
+//                    moveToPreviousPosition();
+//                }
+//            }
+//        } else {
+//            moveToPreviousPosition();
+//        }
+//    }
+
+
+    public void fight(Card enemy) {
+        this.health -= enemy.getAttack();
+        enemy.health -= getAttack();
+        if (enemy.health <= 0) {
+            enemy.setCurrentLocation(DISCARD);
+            for(Slot s: enemy.getPlayer().getDiscardPile().getSlots()){
+                if (s.getCard() == null) {
+                    enemy.move(s.getX(), s.getY());
+                    break;
+                }
+            }
+        }else {
+            // return to previous position
+            enemy.moveToPreviousPosition();
+        }
+        if (this.health <= 0) {
+            setCurrentLocation(DISCARD);
+            for(Slot s: getPlayer().getDiscardPile().getSlots()){
+                if (s.getCard() == null) {
+                    move(s.getX(), s.getY());
+                    break;
+                }
+            }
+        }else {
+            this.player.getBoard().snapTo(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
+            // return to previous position
+            this.moveToPreviousPosition();
+        }
+    }
+
+
+
+
+    public void zoom() {
         if (this.image != null) {
             setBounds(getStage().getWidth() / 2, getStage().getHeight() / 2, getWidth() * 3, getHeight() * 3);
             Bound b = imagePos(getX(), getY(), getWidth(), getHeight());
@@ -171,12 +189,11 @@ public class Card extends Actor {
 
     public void reverseZoom() {
         if (this.image != null) {
-            Bound b = imagePos(this.previousPosition.getX(), this.previousPosition.getY(), this.previousPosition.getW(), this.previousPosition.getH());
-            this.image.setBounds(b.getX(), b.getY(), b.getW(), b.getH());
-            this.cardBackground.setBounds(this.previousPosition.getX(), this.previousPosition.getY(), this.previousPosition.getW(), this.previousPosition.getH());
+            this.image.setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
+            this.cardBackground.setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
         }
-        setBounds(this.previousPosition.getX(), this.previousPosition.getY(), this.previousPosition.getW(), this.previousPosition.getH());
-        this.previousPosition.setBounds(getX(), getY(), getWidth(), getHeight());
+        moveToPreviousPosition();
+        setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
     }
 
     public void move(float x, float y) {
