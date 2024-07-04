@@ -22,4 +22,16 @@ public class Hand extends Deck {
         setHeight(height);
         setSlotWidth(width / (float) NUMBER_OF_HAND_SLOTS);
     }
+
+    public void rebalance(){
+        for(int i = 0; i < getCards().length; i++){
+            var furthestLeftFreePos = firstEmptySlot();
+            if(furthestLeftFreePos != -1 && furthestLeftFreePos < i && getCards()[i] != null){
+                getCards()[i].setCurrentLocation(Location.HAND);
+                getCards()[i].move(getSlotPositionAtIndex(furthestLeftFreePos).x, getSlotPositionAtIndex(furthestLeftFreePos).y);
+                getCards()[furthestLeftFreePos] = getCards()[i];
+                getCards()[i] = null;
+            }
+        }
+    }
 }

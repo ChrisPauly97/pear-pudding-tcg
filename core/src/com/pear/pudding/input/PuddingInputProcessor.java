@@ -107,11 +107,12 @@ public class PuddingInputProcessor implements InputProcessor {
     }
 
     public void resolveHitObject(Card hitCard) {
-        Gdx.app.log("Resolve Hit", hitCard.getName() + ", " + hitCard.getCurrentLocation());
+        Gdx.app.log("Resolve Hit", hitCard.getClass().getSimpleName() + ", " + hitCard.getCurrentLocation());
         switch (hitCard.getCurrentLocation()) {
             case HAND:
                 this.draggingCard = hitCard;
                 this.draggingCard.getPlayer().getBoard().snapShot();
+                this.draggingCard.getPlayer().getHand().snapShot();
                 break;
             case DRAW, DISCARD:
                 break;
@@ -123,22 +124,28 @@ public class PuddingInputProcessor implements InputProcessor {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
             var board = draggingCard.getPlayer().getBoard();
+            var hand = draggingCard.getPlayer().getHand();
             // If you're hovering over a slot on the board
             var slot = board.handleHover(coordinates);
             if(slot != -1) {
                 var targetSlotPos = board.getSlotPositionAtIndex(slot);
                 board.addCard(this.draggingCard, slot);
                 this.draggingCard.move(targetSlotPos.x, targetSlotPos.y);
+//                hand.removeCard(this.draggingCard);
+//                hand.rebalance();
                 this.draggingCard.setCurrentLocation(BOARD);
+            }else {
+//                hand.restoreSnapshot();
+                board.restoreSnapshot();
             }
 
 
             // TODO: remove this
-            var slot1 = draggingCard.getPlayer().getBoard().getCards()[0];
-            var slot2 = draggingCard.getPlayer().getBoard().getCards()[1];
-            var slot3 = draggingCard.getPlayer().getBoard().getCards()[2];
-            var slot4 = draggingCard.getPlayer().getBoard().getCards()[3];
-            var slot5 = draggingCard.getPlayer().getBoard().getCards()[4];
+            var slot1 = draggingCard.getPlayer().getHand().getCards()[0];
+            var slot2 = draggingCard.getPlayer().getHand().getCards()[1];
+            var slot3 = draggingCard.getPlayer().getHand().getCards()[2];
+            var slot4 = draggingCard.getPlayer().getHand().getCards()[3];
+            var slot5 = draggingCard.getPlayer().getHand().getCards()[4];
 
             if (slot1 != null) {
                 Gdx.app.log("Slot 1", slot1.toString());
@@ -165,7 +172,8 @@ public class PuddingInputProcessor implements InputProcessor {
             } else {
                 Gdx.app.log("Slot 5", "null");
             }
-            return false;
+            this.draggingCard = null;
+            return true;
         }
 
 //
@@ -187,15 +195,51 @@ public class PuddingInputProcessor implements InputProcessor {
         var mouseCoords = camera.unproject(new Vector3(x, y, camera.position.z));
         if (this.draggingCard != null) {
             Board board = this.draggingCard.getPlayer().getBoard();
-            if (board.containsCard(this.draggingCard)) {
-                board.removeCard(this.draggingCard);
-            }
+//            var hand = draggingCard.getPlayer().getHand();
+//            if (board.containsCard(this.draggingCard)) {
+//                board.removeCard(this.draggingCard);
+//            }
             if (!deltaCalculated) {
                 this.deltaVec = this.draggingCard.calculatePosDelta(mouseCoords.x, mouseCoords.y);
                 this.deltaCalculated = true;
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
             board.handleHover(mouseCoords);
+            // TODO: remove this
+            var slot1 = draggingCard.getPlayer().getHand().getCards()[0];
+            var slot2 = draggingCard.getPlayer().getHand().getCards()[1];
+            var slot3 = draggingCard.getPlayer().getHand().getCards()[2];
+            var slot4 = draggingCard.getPlayer().getHand().getCards()[3];
+            var slot5 = draggingCard.getPlayer().getHand().getCards()[4];
+
+            if (slot1 != null) {
+                Gdx.app.log("Slot 1", slot1.toString());
+            } else {
+                Gdx.app.log("Slot 1", "null");
+            }
+            if (slot2 != null) {
+                Gdx.app.log("Slot 2", slot2.toString());
+            } else {
+                Gdx.app.log("Slot 2", "null");
+            }
+            if (slot3 != null) {
+                Gdx.app.log("Slot 3", slot3.toString());
+            } else {
+                Gdx.app.log("Slot 3", "null");
+            }
+            if (slot4 != null) {
+                Gdx.app.log("Slot 4", slot4.toString());
+            } else {
+                Gdx.app.log("Slot 4", "null");
+            }
+            if (slot5 != null) {
+                Gdx.app.log("Slot 5", slot5.toString());
+            } else {
+                Gdx.app.log("Slot 5", "null");
+            }
+//            hand.removeCard(this.draggingCard);
+//            hand.rebalance();
+
             this.stage.getBatch().begin();
             this.draggingCard.draw(this.stage.getBatch(), 1f);
             this.stage.getBatch().end();

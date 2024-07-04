@@ -164,7 +164,6 @@ public class Deck {
             }
             return targetSlot;
         }else{
-            restoreSnapshot();
             return -1;
         }
     }
