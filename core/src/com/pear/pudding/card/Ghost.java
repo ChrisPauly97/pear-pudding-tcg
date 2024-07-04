@@ -13,8 +13,8 @@ import static com.pear.pudding.enums.CardType.MINION;
 
 public class Ghost extends Card {
 
-    public Ghost(float x, float y, float width, float height, Color color, Player player, Slot s) {
-        super(x, y, width, height, color, 1, 2, 1, MINION, ETHEREAL, StatusEffects.effects.get("Scare"), player, s);
+    public Ghost(float x, float y, float width, float height, Color color, Player player) {
+        super(x, y, width, height, color, 1, 2, 1, MINION, ETHEREAL, StatusEffects.effects.get("Scare"), player);
         Texture texture = new Texture(Gdx.files.internal("ghost.png"));
         setDebug(true);
         var image = new Image(texture);

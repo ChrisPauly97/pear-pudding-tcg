@@ -1,17 +1,20 @@
 package com.pear.pudding.model;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.pear.pudding.enums.Location;
-import com.pear.pudding.enums.Side;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
+import java.util.Vector;
 
-import static com.pear.pudding.enums.Side.*;
+import static com.pear.pudding.enums.Location.BOARD;
+import static com.pear.pudding.model.Constants.CARD_HEIGHT;
 import static com.pear.pudding.model.Constants.CARD_WIDTH;
 
 @Getter
@@ -22,309 +25,234 @@ public class Deck {
     private float width;
     private float height;
     float slotWidth = CARD_WIDTH;
-    private Location location;
-    private final List<Slot> slots = new ArrayList<>();
+    float slotHeight = CARD_HEIGHT;
+    private float NUMBER_OF_SLOTS;
+    private Card[] cards;
+    private Card[] snapshot;
 
-    public void addSlot(Slot slot) {
-        this.slots.add(slot);
+    public Deck(float slots) {
+        setNUMBER_OF_SLOTS(slots);
+        cards = new Card[(int) NUMBER_OF_SLOTS];
     }
 
-    public void draw(Batch batch) {
-        for (Slot s : getSlots()) {
-            if (s.getCard() != null) {
-                s.getCard().draw(batch, 1);
-            }
-        }
+    public void snapShot() {
+        snapshot = Arrays.copyOf(cards, cards.length);
     }
 
-    public Slot firstEmptySlot() {
-        for (Slot s : this.slots) {
-            if (s.getCard() == null) {
-                return s;
+    public void restoreSnapshot() {
+        if(snapshot == null) return;
+        cards = Arrays.copyOf(snapshot, snapshot.length);
+        for(int i = 0; i < cards.length; i++){
+            if(cards[i] != null){
+                var targetSlotPos = getSlotPositionAtIndex(i);
+                cards[i].move(targetSlotPos.x, targetSlotPos.y);
+                cards[i].setCurrentLocation(BOARD);
             }
         }
-        return null;
+        snapShot();
     }
 
-    public void removeCard(Card targetCard) {
-        for (Slot slot : getSlots()) {
-            Card currentCard = slot.getCard();
-            if (currentCard != null && currentCard.equals(targetCard)) {
-                slot.setCard(null);
-                break;
+    // check if the mouse x y is over the board
+    // cards have an
+    // cut the board into card size slices, x,y,w,h
+
+    public int getIndexUnderMouse(Vector3 mousePos) {
+        for (int i = 0; i < cards.length; i++) {
+            Vector3 slotPos = getSlotPositionAtIndex(i);
+            if (cardHovering(mousePos, slotPos)) {
+                return i;
             }
         }
+        return -1;
     }
 
-    public Slot findSlot(Vector3 targetPosition) {
-        for (Slot slot : slots) {
-            if (slot.contains(targetPosition.x, targetPosition.y)) {
-                return slot;
-            }
-        }
-        return null;
-    }
-
-    // If mouseTarget is currently null
-    // check if it was not null before
-    // If mouseTargetSlot becomes null, move all cards back to their previous position and return null waiting for another drag action
-    // if mouseTargetSlot is null, set previousTargetSlot to null and return null
-    public Slot onHover(Slot mouseTargetSlot, Card draggingCard, Slot previousTargetSlot) {
-//        // If you move the mouse out of the board, move all cards back to their previous position
-        if (mouseTargetSlot == null ){
-            if(previousTargetSlot != null){
-                for (Slot s : this.slots) {
-                    //if the slot has a card
-                    if (s.getCard() != null) {
-                        // previous slot is the old slot this card used to be in
-                        Slot previousSlot = s.getCard().getPreviousSlot();
-                        if(!previousSlot.equals(s)){
-                            previousSlot.setCard(s.getCard());
-                            s.getCard().moveToPreviousPosition();
-                            s.setCard(null);
-                        }
-                    }
-                }
-                return null;
-            }else{
-
-                return null;
-            }
-        }
-            // For each slot, if it's not empty, move the card back
-
-
-        int middleSlotIndex = slots.size() / 2;
-        Slot middleSlot = slots.get(middleSlotIndex);
-        if (slotEmpty(middleSlot) && !draggingCard.equals(middleSlot.getCard()) &&  !slotHasMiddleAsPreviousPosition()) {
-            return middleSlot;
-        } else {
-            int nearestLeftSlotIndex = findNearestFreeSlotToMiddleOnSide(LEFT);
-            int nearestRightSlotIndex = findNearestFreeSlotToMiddleOnSide(RIGHT);
-            if (nearestRightSlotIndex == 0 && nearestLeftSlotIndex == 0) {
-                return null;
-            }
-            int distanceToLeft = Math.abs(mouseTargetSlot.getIndex() - nearestLeftSlotIndex);
-            int distanceToRight = Math.abs(mouseTargetSlot.getIndex() - nearestRightSlotIndex);
-
-
-            if (distanceToLeft <=    distanceToRight) {
-                if (distanceToLeft == 0) {
-                    return mouseTargetSlot;
-                }
-                // If not balanced, shift one more to the left
-                for (int i = nearestLeftSlotIndex; i < mouseTargetSlot.getIndex(); i++) {
-                    Slot currentSlot = slots.get(i);
-                    Slot nextSlot = slots.get(i + 1);
-                    if (nextSlot.getCard() != null) {
-                        // Need to track previous position of all cards we're moving, because if I move the card off the board, the situation needs to reset
-                        nextSlot.getCard().moveToSlot(currentSlot);
-                    }
-                }
-                return mouseTargetSlot;
-            } else {
-                if (distanceToRight == 0) {
-                    return mouseTargetSlot;
-                }
-                // If not balanced, shift one more to the right
-                for (int j = nearestRightSlotIndex; j > mouseTargetSlot.getIndex(); j--) {
-                    Slot currentSlot = slots.get(j);
-                    Slot previousSlot = slots.get(j - 1);
-                    if (previousSlot.getCard() != null) {
-                        previousSlot.getCard().moveToSlot(currentSlot);
-                    }
-                }
-                return mouseTargetSlot;
-            }
-        }
-    }
-
-    public boolean slotHasMiddleAsPreviousPosition() {
-        int middleSlotIndex = slots.size() / 2;
-        Slot middleSlot = slots.get(middleSlotIndex);
-        for (Slot s : this.slots) {
-            if (s.getCard() == null) continue;
-            if (s.getCard().getPreviousSlot().equals(middleSlot)) {
+    public boolean containsCard(Card card){
+        for (Card c : cards) {
+            if(c == card){
                 return true;
             }
         }
         return false;
     }
 
+    public boolean cardHovering(Vector3 mousePos, Vector3 slotPos) {
+        return mousePos.x > slotPos.x && mousePos.x < slotPos.x + slotWidth && mousePos.y > slotPos.y && mousePos.y < slotPos.y + slotHeight;
+    }
 
-//
-//            if(slot != null) {
-//                slot.setCard(middleSlot.getCard());
-//                slot.getCard().move(slot.getX(), slot.getY());
-//                middleSlot.setCard(null);
-//                return slot;
-//            }
-//
-//        int cardSlotIndex = mouseTargetSlot.getIndex();
-//        Side cardSlotSide = mouseTargetSlot.getSide();
-//        int leftCardCount = 0;
-//        int rightCardCount = 0;
-//
-//        // Count the number of cards to the left and right of the initial target slot
-//        for (int i = 0; i < middleSlotIndex; i++) {
-//            if (slots.get(i).getCard() != null) {
-//                leftCardCount++;
-//            }
-//        }
-//        for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
-//            if (slots.get(i).getCard() != null) {
-//                rightCardCount++;
-//            }
-//        }
-//        if (leftCardCount > rightCardCount && cardSlotSide == LEFT) {
-//            // Shift all cards one to the right
-//            for (int i = slots.size() - 1; i > 0; i--) {
-//                Slot currentSlot = slots.get(i);
-//                Slot previousSlot = slots.get(i - 1);
-//                if (previousSlot.getCard() != null) {
-//                    moveCard(previousSlot.getCard(), currentSlot);
-//                    previousSlot.setCard(null);
-//                }
-//            }
-//
-//            // Check the balance after shifting all cards
-//            leftCardCount = 0;
-//            rightCardCount = 0;
-//            for (int i = 0; i < middleSlotIndex; i++) {
-//                if (slots.get(i).getCard() != null) {
-//                    leftCardCount++;
-//                }
-//            }
-//            for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
-//                if (slots.get(i).getCard() != null) {
-//                    rightCardCount++;
-//                }
-//            }
-//            if (leftCardCount > rightCardCount) {
-//                // If not balanced, shift one more to the right
-//                for (int i = slots.size() - 1; i > 0; i--) {
-//                    Slot currentSlot = slots.get(i);
-//                    Slot previousSlot = slots.get(i - 1);
-//                    if (currentSlot.getCard() != null) {
-//                        moveCard(currentSlot.getCard(), previousSlot);
-//                        currentSlot.setCard(null);
-//                    }
-//                }
-//
-//                // Check if the initial target slot is free for the new card
-//                if (mouseTargetSlot.getCard() != null) {
-//                    // Check if there's a slot next to the initial target slot on the left that's free
-//                    if (cardSlotIndex > 0 && slots.get(cardSlotIndex - 1).getCard() == null) {
-//                        return slots.get(cardSlotIndex - 1);
-//                    } else {
-//                        // Check if there's a slot on the right of the middle that's free
-//                        for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
-//                            if (slots.get(i).getCard() == null) {
-//                                // If not balanced, shift one more to the right
-//                                for (int j = slots.size() - 1; j > cardSlotIndex; j--) {
-//                                    Slot currentSlot = slots.get(j);
-//                                    Slot previousSlot = slots.get(j - 1);
-//                                    if (currentSlot.getCard() != null) {
-//                                        moveCard(currentSlot.getCard(), previousSlot);
-//                                        currentSlot.setCard(null);
-//                                    }
-//                                }
-//                                return slots.get(i);
-//                            }
-//                        }
-//                    }
-//                }
-//            } else {
-//                Integer newTargetSlotIndex = findNearestSlotToMiddleOnSide(cardSlotSide);
-//                var newSlot = slots.get(newTargetSlotIndex);
-//                return Objects.requireNonNullElse(newTargetSlotIndex, newSlot);
-//            }
-//        } else if (leftCardCount < rightCardCount && cardSlotSide == RIGHT) {
-//            for (int i = 0; i < slots.size() - 1; i++) {
-//                Slot currentSlot = slots.get(i);
-//                Slot nextSlot = slots.get(i + 1);
-//                if (nextSlot.getCard() != null) {
-//                    moveCard(nextSlot.getCard(), currentSlot);
-//                    nextSlot.setCard(null);
-//                }
-//            }
-//
-//            // Check the balance after shifting all cards
-//            leftCardCount = 0;
-//            rightCardCount = 0;
-//            for (int i = 0; i < middleSlotIndex; i++) {
-//                if (slots.get(i).getCard() != null) {
-//                    leftCardCount++;
-//                }
-//            }
-//            for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
-//                if (slots.get(i).getCard() != null) {
-//                    rightCardCount++;
-//                }
-//            }
-//            if (leftCardCount < rightCardCount) {
-//
-//                // If not balanced, shift one more to the left
-//                for (int i = 0; i < slots.size() - 1; i++) {
-//                    Slot currentSlot = slots.get(i);
-//                    Slot nextSlot = slots.get(i + 1);
-//                    if (nextSlot.getCard() != null) {
-//                        moveCard(nextSlot.getCard(), currentSlot);
-//                        nextSlot.setCard(null);
-//                    }
-//                }
-//
-//                // Check if the initial target slot is free for the new card
-//                if (initialTargetSlot.getCard() != null) {
-//                    // Check if there's a slot next to the initial target slot on the left that's free
-//                    if (cardSlotIndex > 0 && slots.get(cardSlotIndex - 1).getCard() == null) {
-//                        return slots.get(cardSlotIndex - 1);
-//                    } else {
-//                        // Check if there's a slot on the right of the middle that's free
-//                        for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
-//                            if (slots.get(i).getCard() == null) {
-//                                // Shift all cards from the initial target slot to the free slot one position to the right
-//                                for (int j = cardSlotIndex; j < i; j++) {
-//                                    Slot currentSlot = slots.get(j);
-//                                    Slot nextSlot = slots.get(j + 1);
-//                                    if (currentSlot.getCard() != null) {
-//                                        moveCard(currentSlot.getCard(), nextSlot);
-//                                        currentSlot.setCard(null);
-//                                    }
-//                                }
-//                                return slots.get(i);
-//                            }
-//                        }
-//                    }
-//                }
-//            }
-//        } else {
-//            Integer newTargetSlot = findNearestSlotToMiddleOnSide(cardSlotSide);
-//            return slots.get(newTargetSlot);
-//        }
-//        return null;
-//    }
+    public boolean mouseHovering(float mouseX, float mouseY) {
+        return mouseX > x && mouseX < x + width && mouseY > y && mouseY < y + height;
+    }
 
-    public boolean slotEmpty(Slot slot) {
-        return slot.getCard() == null;
+    public Vector3 getSlotPositionAtIndex(int index) {
+        var xPos = getX() + slotWidth * index;
+        var yPos = getY();
+        return new Vector3(xPos, yPos, 1);
+    }
+
+    public void draw(Batch batch) {
+        for (Card card : getCards()) {
+            if(card != null){
+                card.draw(batch, 1);
+            }
+        }
+    }
+
+    public boolean isIndexEmpty(int index) {
+        return cards[index] == null;
+    }
+
+    public int firstEmptySlot() {
+        for (int i = 0; i < cards.length; i++) {
+            if (cards[i] == null) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public boolean addCard(Card targetCard, int index) {
+        if (index != -1 && isIndexEmpty(index)) {
+            this.cards[index] = targetCard;
+            return true;
+        }
+        return false;
+    }
+
+    public int handleHover(Vector3 mouseCoords){
+        var targetSlot = getIndexUnderMouse(mouseCoords);
+        // If you're hovering over a slot on the board
+        if (targetSlot != -1) {
+            Gdx.app.log("target", "" + targetSlot);
+            if (getCardAtIndex(targetSlot) == null) {
+                if (onTheLeft(targetSlot)) {
+                    targetSlot = nearestFreeSlotOnLeft();
+                } else if (!onTheLeft(targetSlot)) {
+                    targetSlot = nearestFreeSlotOnRight();
+                }
+            } else {
+                var nearestFreeSlotLeft = nearestFreeSlotOnLeft();
+                var nearestFreeSlotRight = nearestFreeSlotOnRight();
+                var distanceToMiddleFromLeft = calculateDistance((int) getNUMBER_OF_SLOTS() / 2, nearestFreeSlotLeft);
+                var distanceToMiddleFromRight = calculateDistance((int) getNUMBER_OF_SLOTS() / 2, nearestFreeSlotRight);
+
+                // most of the objects are on the right
+                if (distanceToMiddleFromLeft < distanceToMiddleFromRight) {
+                    // If not balanced, shift one more to the left
+                    for (int i = nearestFreeSlotLeft; i < targetSlot; i++) {
+                        Card currentCard = getCards()[i];
+                        Card nextCard = getCards()[i + 1];
+                        if (currentCard == null && nextCard != null) {
+                            var newSlotPos = getSlotPositionAtIndex(i);
+                            getCards()[i + 1].move(newSlotPos.x, newSlotPos.y);
+                            addCard(nextCard, i);
+                            removeCard(i + 1);
+                        }
+                    }
+                } else {
+// If not balanced, shift one more to the right
+                    for (int i = nearestFreeSlotRight; i > targetSlot; i--) {
+                        Card currentCard = getCards()[i];
+                        Card previousCard = getCards()[i - 1];
+                        if (currentCard == null && previousCard != null) {
+                            var newSlotPos = getSlotPositionAtIndex(i);
+                            getCards()[i - 1].move(newSlotPos.x, newSlotPos.y);
+                            addCard(previousCard, i);
+                            removeCard(i - 1);
+                        }
+                    }
+                }
+            }
+            return targetSlot;
+        }else{
+            restoreSnapshot();
+            return -1;
+        }
+    }
+
+    public void removeCard(int index) {
+        cards[index] = null;
+    }
+
+    public Card getCardAtIndex(int index) {
+        if(cards[index] != null){
+            return cards[index];
+        }else{
+            return null;
+        }
+    }
+
+    public void removeCard(Card c) {
+        for (int i = 0; i < cards.length; i++) {
+            if (cards[i] == c) {
+                cards[i] = null;
+            }
+        }
     }
 
 
-    private int findNearestFreeSlotToMiddleOnSide(Side side) {
-        int middleSlotIndex = slots.size() / 2;
-        if (side == LEFT) {
-            for (int i = middleSlotIndex - 1; i >= 0; i--) {
-                if (slotEmpty(slots.get(i))) {
-                    return i;
-                }
-            }
-        } else if (side == RIGHT) {
-            for (int i = middleSlotIndex + 1; i < slots.size(); i++) {
-                if (slotEmpty(slots.get(i))) {
-                    return i;
+    public Card findCardUnderMouse(Vector3 targetPosition) {
+        for (Card card : cards) {
+            if (card != null) {
+                if (card.contains(targetPosition)) {
+                    return card;
                 }
             }
         }
-        return 0;
+        return null;
+    }
+
+    // Tested
+    public boolean onTheLeft(int index) {
+        int middleSlotIndex = cards.length / 2;
+        return index < middleSlotIndex;
+    }
+
+    public boolean inTheMiddle(int index) {
+        int middleSlotIndex = cards.length / 2;
+        return index == middleSlotIndex;
+    }
+
+    // Tested
+    public boolean onTheRight(int index) {
+        int middleSlotIndex = cards.length / 2;
+        return index > middleSlotIndex;
+    }
+
+    // Tested
+    public int calculateDistance(int index1, int index2) {
+        return Math.abs(index1 - index2);
+    }
+
+    //Tested
+    public int nearestFreeSlotOnLeft() {
+        int middleSlotIndex = cards.length / 2;
+        for (int i = middleSlotIndex; i >= 0; i--) {
+            if (isIndexEmpty(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public int middleSlot(){
+        return cards.length / 2;
+    }
+
+    //Tested
+    public int nearestFreeSlotOnRight() {
+        int middleSlotIndex = cards.length / 2;
+        for (int i = middleSlotIndex; i < cards.length; i++) {
+            if (isIndexEmpty(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public void shuffle() {
+        List<Card> cardsList = Arrays.asList(cards);
+        Collections.shuffle(cardsList);
+        cardsList.toArray(cards);
+        System.out.println(Arrays.toString(cards));
     }
 }

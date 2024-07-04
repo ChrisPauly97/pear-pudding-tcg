@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.pear.pudding.card.*;
 import com.pear.pudding.enums.Location;
@@ -14,7 +15,9 @@ import com.pear.pudding.model.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static com.pear.pudding.model.Constants.*;
 
@@ -51,27 +54,26 @@ public class Player {
     }
 
     public void initializeDeck(Stage stage) {
-        int i = 0;
         Card card;
-        for(Slot s: this.drawDeck.getSlots()){
+        for(int i = 0; i < drawDeck.getNUMBER_OF_SLOTS(); i++){
+            Vector3 slotPos = drawDeck.getSlotPositionAtIndex(i);
             card = switch (i) {
-                case 0, 3 -> new Ghost(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
-                case 1, 4 -> new Skeleton(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
-                case 2, 5 -> new Zombie(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
-                default -> new Ghoul(s.getX(), s.getY(), CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this, s);
+                case 0, 3 -> new Ghost(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                case 1, 4 -> new Skeleton(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                case 2, 5 -> new Zombie(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                default -> new Ghoul(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
             };
             card.setCurrentLocation(Location.DRAW);
-            s.setCard(card);
+            this.drawDeck.addCard(card, i);
             stage.addActor(card);
-            i++;
         }
-        Collections.shuffle(this.drawDeck.getSlots());
-    }
+        this.drawDeck.shuffle();
+   }
 
     public void refreshBoard(){
-        for(Slot s: getBoard().getSlots()){
-            if(s.getCard()!= null){
-                s.getCard().setAttackCount(1);
+        for(Card s: getBoard().getCards()){
+            if(s!= null){
+                s.setAttackCount(1);
             }
         }
     }
@@ -98,15 +100,16 @@ public class Player {
     }
 
     public void drawCard(){
-        for(int i = this.drawDeck.getSlots().size()-1; i >= 0; i--){
-            if(this.drawDeck.getSlots().get(i).getCard() != null){
-                var card = this.drawDeck.getSlots().get(i).getCard();
-                this.drawDeck.removeCard(card);
-                var slot = this.hand.firstEmptySlot();
-                if(slot.getCard() == null){
-                    card.moveToSlot(slot);
-                }else{
-                    card.setCurrentLocation(Location.DISCARD);
+        for(int i = this.drawDeck.getCards().length-1; i >= 0; i--){
+            if(this.drawDeck.getCards()[i] != null){
+                var card = this.drawDeck.getCards()[i];
+                this.drawDeck.removeCard(i);
+                var emptySlot = this.hand.firstEmptySlot();
+                var handPos = this.hand.getSlotPositionAtIndex(emptySlot);
+                if(card != null){
+                    card.move(handPos.x,handPos.y);
+                    card.setCurrentLocation(Location.HAND);
+                    this.hand.addCard(card, emptySlot);
                 }
                 break;
             }
