@@ -49,8 +49,6 @@ public class Card extends Actor {
      * Determines whether the card display its text and image or the card back.
      */
     private boolean faceUp = false;
-    private Integer currentSlot;
-    private Integer previousSlot;
     private AssetManager manager;
     private Location currentLocation;
 
@@ -75,16 +73,6 @@ public class Card extends Actor {
         setCardBack(img);
         cardBackground = new Image(new Texture(Gdx.files.internal("card.png")));
         cardBackground.setBounds(x, y, width, height);
-//        cardBack.addListener(new ClickListener(){
-//            @Override
-//            public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor){
-//                zoom();
-//            }
-//            @Override
-//            public void exit(InputEvent event, float x, float y, int pointer, Actor toActor){
-//                reverseZoom();
-//            }
-//        });
     }
 
     public boolean contains(Vector3 point) {
@@ -96,95 +84,38 @@ public class Card extends Actor {
         return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
     }
 
-    // there's a new thing in slot 3
-    // can i move it to the left or right
-    // find closest left and right
-    // bump cards left and right by 1
+    public void fight(Card enemy) {
+        this.health -= enemy.getAttack();
+        enemy.health -= getAttack();
+        if (enemy.health <= 0) {
+            enemy.moveToDiscardPile();
+        }
+        if (this.health <= 0) {
+            moveToDiscardPile();
 
-
-//    public void moveToPreviousPosition() {
-//        if(currentSlot != previousSlot) {
-//            move(getPreviousSlot().getX(), getPreviousSlot().getY());
-//            var oldSlot = previousSlot;
-//            currentSlot.setCard(null);
-//            previousSlot = currentSlot;
-//            currentSlot = oldSlot;
-//            currentSlot.setCard(this);
-//            currentLocation = oldSlot.location;
-//        }
-//    }
-//
-//    public void moveToSlot(Card s) {
-//        this.currentLocation = s.getLocation();
-//        move(s.getX(), s.getY());
-//        previousSlot.setCard(null);
-//        this.currentSlot.setCard(null);
-//        previousSlot = this.currentSlot;
-//        s.setCard(this);
-//        currentSlot = s;
-//        Gdx.app.log("Test", "Hi");
-//    }
-
-//    public void resolveMove(Vector3 coordinates, Board enemyBoard) {
-//        if (player.isMyTurn()) {
-//            Slot slot = null;
-//            if (player.hasEnoughMana(this) && this.currentLocation.equals(HAND)) {
-//                var initialTargetSlot = player.getBoard().findSlot(coordinates);
-//                slot = player.getBoard().snapTo(initialTargetSlot,this, null);
-//            }
-//
-//            if (slot != null) {
-//                player.getHand().removeCard(this);
-//                player.setCurrentMana(player.getCurrentMana() - getCost());
-//            } else {
-//                Slot enemySlot = enemyBoard.findSlot(coordinates);
-//                if (enemySlot != null) {
-//                    Card enemyCard = enemySlot.getCard();
-//                    if (enemyCard != null && this.attackCount > 0) {
-//                        fight(enemyCard);
-//                    } else {
-//                        moveToPreviousPosition();
-//                    }
-//                } else {
-//                    moveToPreviousPosition();
-//                }
-//            }
-//        } else {
-//            moveToPreviousPosition();
-//        }
-//    }
-
-
-//    public void fight(Card enemy) {
-//        this.health -= enemy.getAttack();
-//        enemy.health -= getAttack();
-//        if (enemy.health <= 0) {
-//            enemy.setCurrentLocation(DISCARD);
-//            for(Slot s: enemy.getPlayer().getDiscardPile().getSlots()){
-//                if (s.getCard() == null) {
-//                    enemy.move(s.getX(), s.getY());
-//                    break;
-//                }
-//            }
-//        }else {
-//            // return to previous position
-//            enemy.moveToPreviousPosition();
-//        }
-//        if (this.health <= 0) {
-//            setCurrentLocation(DISCARD);
-//            for(Slot s: getPlayer().getDiscardPile().getSlots()){
-//                if (s.getCard() == null) {
-//                    move(s.getX(), s.getY());
-//                    break;
-//                }
-//            }
-//        }else {
+        }else {
+            switch(getCurrentLocation()) {
+                case HAND:
+                    player.getHand().restoreSnapshot();
+                    break;
+                case BOARD:
+                    player.getBoard().restoreSnapshot();
+                    break;
+            }
 //            this.player.getBoard().onHover(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
-//            // return to previous position
+//             return to previous position
 //            this.moveToPreviousPosition();
-//        }
-//    }
+        }
+    }
+//
 
+    public void moveToDiscardPile() {
+        setCurrentLocation(DISCARD);
+        var myDiscardPile = this.getPlayer().getDiscardPile();
+        var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
+        myDiscardPile.addCard(this, emptyDiscardSlot);
+        this.move(myDiscardPile.getSlotPositionAtIndex(emptyDiscardSlot).x, myDiscardPile.getSlotPositionAtIndex(emptyDiscardSlot).y);
+    }
 
 
 

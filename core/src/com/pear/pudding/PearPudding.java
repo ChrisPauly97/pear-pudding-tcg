@@ -45,7 +45,7 @@ public class PearPudding implements Screen {
             stage.addActor(player2.getHero());
             player1.initializeDeck(stage);
             player2.initializeDeck(stage);
-            Button buttonEndTurn = new TextButton("End Turn",manager.get("uiskin.json", Skin.class));
+            Button buttonEndTurn = new TextButton("End Turn", manager.get("uiskin.json", Skin.class));
             buttonEndTurn.addListener(new EndTurnClickListener(player1, player2));
             buttonEndTurn.setBounds(WINDOW_WIDTH - 100 - BUFFER, WINDOW_HEIGHT / 2, 100, 40);
             stage.addActor(buttonEndTurn);

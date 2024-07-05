@@ -11,7 +11,6 @@ import lombok.Setter;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Vector;
 
 import static com.pear.pudding.enums.Location.BOARD;
 import static com.pear.pudding.model.Constants.CARD_HEIGHT;
@@ -29,6 +28,7 @@ public class Deck {
     private float NUMBER_OF_SLOTS;
     private Card[] cards;
     private Card[] snapshot;
+    private int previousTargetSlot = -1;
 
     public Deck(float slots) {
         setNUMBER_OF_SLOTS(slots);
@@ -36,14 +36,14 @@ public class Deck {
     }
 
     public void snapShot() {
-        snapshot = Arrays.copyOf(cards, cards.length);
+        this.snapshot = Arrays.copyOf(cards, cards.length);
     }
 
     public void restoreSnapshot() {
-        if(snapshot == null) return;
+        if (snapshot == null) return;
         cards = Arrays.copyOf(snapshot, snapshot.length);
-        for(int i = 0; i < cards.length; i++){
-            if(cards[i] != null){
+        for (int i = 0; i < cards.length; i++) {
+            if (cards[i] != null) {
                 var targetSlotPos = getSlotPositionAtIndex(i);
                 cards[i].move(targetSlotPos.x, targetSlotPos.y);
                 cards[i].setCurrentLocation(BOARD);
@@ -66,9 +66,9 @@ public class Deck {
         return -1;
     }
 
-    public boolean containsCard(Card card){
+    public boolean containsCard(Card card) {
         for (Card c : cards) {
-            if(c == card){
+            if (c == card) {
                 return true;
             }
         }
@@ -91,7 +91,7 @@ public class Deck {
 
     public void draw(Batch batch) {
         for (Card card : getCards()) {
-            if(card != null){
+            if (card != null) {
                 card.draw(batch, 1);
             }
         }
@@ -118,20 +118,23 @@ public class Deck {
         return false;
     }
 
-    public int handleHover(Vector3 mouseCoords){
+    public int handleHover(Vector3 mouseCoords) {
         var targetSlot = getIndexUnderMouse(mouseCoords);
         // If you're hovering over a slot on the board
         if (targetSlot != -1) {
-            Gdx.app.log("target", "" + targetSlot);
+            if (this.previousTargetSlot != targetSlot) {
+                restoreSnapshot();
+                this.previousTargetSlot = targetSlot;
+            }
             if (getCardAtIndex(targetSlot) == null) {
                 if (onTheLeft(targetSlot)) {
-                    targetSlot = nearestFreeSlotOnLeft();
+                    targetSlot = nearestFreeSlotOnLeft(targetSlot);
                 } else if (!onTheLeft(targetSlot)) {
-                    targetSlot = nearestFreeSlotOnRight();
+                    targetSlot = nearestFreeSlotOnRight(targetSlot);
                 }
             } else {
-                var nearestFreeSlotLeft = nearestFreeSlotOnLeft();
-                var nearestFreeSlotRight = nearestFreeSlotOnRight();
+                var nearestFreeSlotLeft = nearestFreeSlotFromMiddleOnLeft();
+                var nearestFreeSlotRight = nearestFreeSlotFromMiddleOnRight();
                 var distanceToMiddleFromLeft = calculateDistance((int) getNUMBER_OF_SLOTS() / 2, nearestFreeSlotLeft);
                 var distanceToMiddleFromRight = calculateDistance((int) getNUMBER_OF_SLOTS() / 2, nearestFreeSlotRight);
 
@@ -163,7 +166,9 @@ public class Deck {
                 }
             }
             return targetSlot;
-        }else{
+        } else {
+            this.previousTargetSlot = -1;
+            restoreSnapshot();
             return -1;
         }
     }
@@ -173,9 +178,9 @@ public class Deck {
     }
 
     public Card getCardAtIndex(int index) {
-        if(cards[index] != null){
+        if (cards[index] != null) {
             return cards[index];
-        }else{
+        } else {
             return null;
         }
     }
@@ -223,9 +228,9 @@ public class Deck {
     }
 
     //Tested
-    public int nearestFreeSlotOnLeft() {
+    public int nearestFreeSlotFromMiddleOnLeft() {
         int middleSlotIndex = cards.length / 2;
-        for (int i = middleSlotIndex; i >= 0; i--) {
+        for (int i = middleSlotIndex-1; i >= 0; i--) {
             if (isIndexEmpty(i)) {
                 return i;
             }
@@ -233,15 +238,42 @@ public class Deck {
         return -1;
     }
 
-    public int middleSlot(){
+
+    //Tested
+    public int nearestFreeSlotOnLeft(int targetSlot) {
+        int middleSlotIndex = cards.length / 2;
+        for (int i = targetSlot; i <= middleSlotIndex; i++) {
+            if(i == middleSlotIndex) {
+                return middleSlotIndex;
+            } else if (!isIndexEmpty(i + 1)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public int middleSlot() {
         return cards.length / 2;
     }
 
     //Tested
-    public int nearestFreeSlotOnRight() {
+    public int nearestFreeSlotFromMiddleOnRight() {
         int middleSlotIndex = cards.length / 2;
         for (int i = middleSlotIndex; i < cards.length; i++) {
             if (isIndexEmpty(i)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    //Tested
+    public int nearestFreeSlotOnRight(int targetIndex) {
+        int middleSlotIndex = cards.length / 2;
+        for (int i = targetIndex; i >= middleSlotIndex; i--) {
+            if(i == middleSlotIndex) {
+                return middleSlotIndex;
+            } else if (!isIndexEmpty(i-1)) {
                 return i;
             }
         }

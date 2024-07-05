@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.util.Arrays;
+
 import static com.pear.pudding.enums.Location.DRAW;
 import static com.pear.pudding.model.Constants.*;
 
@@ -21,7 +23,7 @@ public class DrawDeck extends Deck {
         setWidth(width);
         setHeight(height);
         setSlotWidth(width);
-        Gdx.app.log("DrawDeck", getCards().toString());
+        Gdx.app.log("DrawDeck", Arrays.toString(getCards()));
     }
 
     @Override

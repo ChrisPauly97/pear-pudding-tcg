@@ -8,13 +8,11 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.pear.pudding.model.Board;
-import com.pear.pudding.model.Bound;
-import com.pear.pudding.model.Card;
+import com.pear.pudding.model.*;
 import com.pear.pudding.enums.Location;
-import com.pear.pudding.model.Slot;
 import com.pear.pudding.player.Player;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -112,8 +110,13 @@ public class PuddingInputProcessor implements InputProcessor {
             case HAND:
                 this.draggingCard = hitCard;
                 this.draggingCard.getPlayer().getBoard().snapShot();
-                this.draggingCard.getPlayer().getHand().snapShot();
+//                this.draggingCard.getPlayer().getHand().snapShot();
+//                this.draggingCard.getPlayer().getHand().removeCard(this.draggingCard);
                 break;
+            case BOARD:
+                this.draggingCard = hitCard;
+                this.draggingCard.getPlayer().getBoard().snapShot();
+//                this.draggingCard.getPlayer().getBoard().removeCard(this.draggingCard);
             case DRAW, DISCARD:
                 break;
         }
@@ -123,66 +126,35 @@ public class PuddingInputProcessor implements InputProcessor {
     public boolean touchUp(int xCoord, int yCoord, int pointer, int button) {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
-            var board = draggingCard.getPlayer().getBoard();
-            var hand = draggingCard.getPlayer().getHand();
+            Board board = draggingCard.getPlayer().getBoard();
+            Hand hand = draggingCard.getPlayer().getHand();
+            Gdx.app.log("Board before touchUp", Arrays.toString(board.getCards()));
+            Gdx.app.log("Hand before touchUp", Arrays.toString(hand.getCards()));
             // If you're hovering over a slot on the board
             var slot = board.handleHover(coordinates);
+//            var handSlot = hand.handleHover(coordinates);
+
             if(slot != -1) {
                 var targetSlotPos = board.getSlotPositionAtIndex(slot);
                 board.addCard(this.draggingCard, slot);
                 this.draggingCard.move(targetSlotPos.x, targetSlotPos.y);
-//                hand.removeCard(this.draggingCard);
-//                hand.rebalance();
                 this.draggingCard.setCurrentLocation(BOARD);
-            }else {
-//                hand.restoreSnapshot();
+//            }else if(handSlot != -1) {
+//                var targetSlotPos = hand.getSlotPositionAtIndex(handSlot);
+//                hand.addCard(this.draggingCard, handSlot);
+//                this.draggingCard.move(targetSlotPos.x, targetSlotPos.y);
+//                this.draggingCard.setCurrentLocation(HAND);
+            }else{
                 board.restoreSnapshot();
+//                hand.restoreSnapshot();
+
             }
 
-
-            // TODO: remove this
-            var slot1 = draggingCard.getPlayer().getHand().getCards()[0];
-            var slot2 = draggingCard.getPlayer().getHand().getCards()[1];
-            var slot3 = draggingCard.getPlayer().getHand().getCards()[2];
-            var slot4 = draggingCard.getPlayer().getHand().getCards()[3];
-            var slot5 = draggingCard.getPlayer().getHand().getCards()[4];
-
-            if (slot1 != null) {
-                Gdx.app.log("Slot 1", slot1.toString());
-            } else {
-                Gdx.app.log("Slot 1", "null");
-            }
-            if (slot2 != null) {
-                Gdx.app.log("Slot 2", slot2.toString());
-            } else {
-                Gdx.app.log("Slot 2", "null");
-            }
-            if (slot3 != null) {
-                Gdx.app.log("Slot 3", slot3.toString());
-            } else {
-                Gdx.app.log("Slot 3", "null");
-            }
-            if (slot4 != null) {
-                Gdx.app.log("Slot 4", slot4.toString());
-            } else {
-                Gdx.app.log("Slot 4", "null");
-            }
-            if (slot5 != null) {
-                Gdx.app.log("Slot 5", slot5.toString());
-            } else {
-                Gdx.app.log("Slot 5", "null");
-            }
             this.draggingCard = null;
+            Gdx.app.log("Board after touchUp", Arrays.toString(board.getCards()));
+            Gdx.app.log("Hand after touchUp", Arrays.toString(hand.getCards()));
             return true;
         }
-
-//
-//        }
-//        this.previousTargetSlot = null;
-//        deltaCalculated = false;
-//        draggingCard = null;
-//        return false;
-//    }
         return false;
     }
 
@@ -194,52 +166,17 @@ public class PuddingInputProcessor implements InputProcessor {
     public boolean touchDragged(int x, int y, int pointer) {
         var mouseCoords = camera.unproject(new Vector3(x, y, camera.position.z));
         if (this.draggingCard != null) {
-            Board board = this.draggingCard.getPlayer().getBoard();
-//            var hand = draggingCard.getPlayer().getHand();
-//            if (board.containsCard(this.draggingCard)) {
-//                board.removeCard(this.draggingCard);
-//            }
             if (!deltaCalculated) {
                 this.deltaVec = this.draggingCard.calculatePosDelta(mouseCoords.x, mouseCoords.y);
                 this.deltaCalculated = true;
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
-            board.handleHover(mouseCoords);
-            // TODO: remove this
-            var slot1 = draggingCard.getPlayer().getHand().getCards()[0];
-            var slot2 = draggingCard.getPlayer().getHand().getCards()[1];
-            var slot3 = draggingCard.getPlayer().getHand().getCards()[2];
-            var slot4 = draggingCard.getPlayer().getHand().getCards()[3];
-            var slot5 = draggingCard.getPlayer().getHand().getCards()[4];
-
-            if (slot1 != null) {
-                Gdx.app.log("Slot 1", slot1.toString());
-            } else {
-                Gdx.app.log("Slot 1", "null");
-            }
-            if (slot2 != null) {
-                Gdx.app.log("Slot 2", slot2.toString());
-            } else {
-                Gdx.app.log("Slot 2", "null");
-            }
-            if (slot3 != null) {
-                Gdx.app.log("Slot 3", slot3.toString());
-            } else {
-                Gdx.app.log("Slot 3", "null");
-            }
-            if (slot4 != null) {
-                Gdx.app.log("Slot 4", slot4.toString());
-            } else {
-                Gdx.app.log("Slot 4", "null");
-            }
-            if (slot5 != null) {
-                Gdx.app.log("Slot 5", slot5.toString());
-            } else {
-                Gdx.app.log("Slot 5", "null");
-            }
+            Board myBoard = this.draggingCard.getPlayer().getBoard();
+            myBoard.handleHover(mouseCoords);
 //            hand.removeCard(this.draggingCard);
 //            hand.rebalance();
-
+//            Hand myHand = this.draggingCard.getPlayer().getHand();
+//            myHand.handleHover(mouseCoords);
             this.stage.getBatch().begin();
             this.draggingCard.draw(this.stage.getBatch(), 1f);
             this.stage.getBatch().end();

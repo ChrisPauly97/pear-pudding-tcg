@@ -62,11 +62,11 @@ public class DeckTest {
 
     @Test
     public void testNearestFreeSlotOnLeft() {
-        assertEquals(1, deck.nearestFreeSlotOnLeft());
+        assertEquals(1, deck.nearestFreeSlotFromMiddleOnLeft());
         deck.addCard(mock(Card.class), 1); // Add a card to an existing slot
-        assertEquals(0, deck.nearestFreeSlotOnLeft());
+        assertEquals(0, deck.nearestFreeSlotFromMiddleOnLeft());
         deck.addCard(mock(Card.class), 0); // Add a card on the furthest right slot. After this all slots are full
-        assertEquals(-1, deck.nearestFreeSlotOnLeft());
+        assertEquals(-1, deck.nearestFreeSlotFromMiddleOnLeft());
     }
 
     @Test
@@ -116,14 +116,14 @@ public class DeckTest {
 
     @Test
     public void testNearestFreeSlotOnRight() {
-        assertEquals(3, deck.nearestFreeSlotOnRight());
+        assertEquals(3, deck.nearestFreeSlotFromMiddleOnRight());
 
         deck.addCard(mock(Card.class), 3); // Add a card to an existing slot
-        assertEquals(4, deck.nearestFreeSlotOnRight());
+        assertEquals(4, deck.nearestFreeSlotFromMiddleOnRight());
 
         deck.addCard(mock(Card.class), 4); // Add a card on the furthest right slot
         // After this all slots are full
-        assertEquals(-1, deck.nearestFreeSlotOnRight());
+        assertEquals(-1, deck.nearestFreeSlotFromMiddleOnRight());
     }
 
     @Test
