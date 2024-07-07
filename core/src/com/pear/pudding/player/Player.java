@@ -43,20 +43,20 @@ public class Player {
         this.board = new Board(WINDOW_WIDTH / 2 - (CARD_WIDTH * ((float) NUMBER_OF_BOARD_SLOTS / 2)), isPlayer1 ? BOARD_BUFFER : WINDOW_HEIGHT - BOARD_BUFFER - CARD_HEIGHT, NUMBER_OF_BOARD_SLOTS * CARD_WIDTH, CARD_HEIGHT);
         this.hand = new Hand(WINDOW_WIDTH / 2 - (CARD_WIDTH * (NUMBER_OF_HAND_SLOTS / 2)), isPlayer1 ? BUFFER : WINDOW_HEIGHT - CARD_HEIGHT, NUMBER_OF_HAND_SLOTS * CARD_WIDTH, CARD_HEIGHT);
         this.drawDeck = new DrawDeck(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER : WINDOW_HEIGHT - BUFFER - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT);
-        this.healthPosition = new Vector2(WINDOW_WIDTH / 2, isPlayer1 ? BUFFER * 3 + CARD_HEIGHT: WINDOW_HEIGHT - CARD_HEIGHT - BUFFER);
+        this.healthPosition = new Vector2(WINDOW_WIDTH / 2, isPlayer1 ? BUFFER * 3 + CARD_HEIGHT : WINDOW_HEIGHT - CARD_HEIGHT - BUFFER);
         this.discardPile = new DiscardPile(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER * 2 + CARD_HEIGHT : WINDOW_HEIGHT - BUFFER * 2 - CARD_HEIGHT * 2, CARD_WIDTH, CARD_HEIGHT);
         Texture heroTexture = manager.get("ghost.png", Texture.class);
         Texture hero2Texture = manager.get("ghoul.png", Texture.class);
-        hero = new Hero(isPlayer1 ? heroTexture : hero2Texture, WINDOW_WIDTH / 2, isPlayer1 ? (CARD_HEIGHT * 2)- BUFFER * 2: WINDOW_HEIGHT - (CARD_HEIGHT * 2) +BUFFER*2, isPlayer1 ? 0 : 180);
-        if(!isPlayer1){
+        hero = new Hero(isPlayer1 ? heroTexture : hero2Texture, WINDOW_WIDTH / 2, isPlayer1 ? (CARD_HEIGHT * 2) - BUFFER * 2 : WINDOW_HEIGHT - (CARD_HEIGHT * 2) + BUFFER * 2, isPlayer1 ? 0 : 180);
+        if (!isPlayer1) {
             hero.rotateBy(180f);
         }
     }
 
     public void initializeDeck(Stage stage) {
         Card card;
-        for(int i = 0; i < drawDeck.getCards().length; i++){
-            Vector3 slotPos = drawDeck.getSlotPositionAtIndex();
+        for (int i = 0; i < drawDeck.getCards().length; i++) {
+            Vector3 slotPos = drawDeck.getSlotPositionAtIndex(1);
             card = switch (i) {
                 case 0, 3 -> new Ghost(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
                 case 1, 4 -> new Skeleton(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
@@ -68,46 +68,46 @@ public class Player {
             stage.addActor(card);
         }
         this.drawDeck.shuffle();
-   }
+    }
 
-    public void refreshBoard(){
-        for(Card s: getBoard().getCards()){
-            if(s!= null){
+    public void refreshBoard() {
+        for (Card s : getBoard().getCards()) {
+            if (s != null) {
                 s.setAttackCount(1);
             }
         }
     }
 
-    public boolean hasEnoughMana(Card card){
+    public boolean hasEnoughMana(Card card) {
         return this.getCurrentMana() >= card.getCost();
     }
 
-    public void draw(Batch batch){
+    public void draw(Batch batch) {
         var font = this.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
 
         font.getData().markupEnabled = true;
         font.getData().setScale(1f);
-            if(getHealth() <= 10){
-                font.draw(batch, "[RED]" + this.getHealth(), this.getHealthPosition().x ,this.getHealthPosition().y);
-        }else{
-            font.draw(batch, "[GREEN]" + this.getHealth(), this.getHealthPosition().x - BUFFER * 3,this.getHealthPosition().y);
+        if (getHealth() <= 10) {
+            font.draw(batch, "[RED]" + this.getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
+        } else {
+            font.draw(batch, "[GREEN]" + this.getHealth(), this.getHealthPosition().x - BUFFER * 3, this.getHealthPosition().y);
         }
-        font.draw(batch, "[WHITE]" + this.getCurrentMana() + "/" + this.getTotalMana(), this.getHealthPosition().x + BUFFER*3 / 2,this.getHealthPosition().y);
+        font.draw(batch, "[WHITE]" + this.getCurrentMana() + "/" + this.getTotalMana(), this.getHealthPosition().x + BUFFER * 3 / 2, this.getHealthPosition().y);
         getHero().draw(batch);
         getDrawDeck().draw(batch);
         getBoard().draw(batch);
         getHand().draw(batch);
     }
 
-    public void drawCard(){
-        for(int i = this.drawDeck.getCards().length-1; i >= 0; i--){
-            if(this.drawDeck.getCards()[i] != null){
+    public void drawCard() {
+        for (int i = this.drawDeck.getCards().length - 1; i >= 0; i--) {
+            if (this.drawDeck.getCards()[i] != null) {
                 var card = this.drawDeck.getCards()[i];
                 this.drawDeck.removeCard(i);
                 var emptySlot = this.hand.firstEmptySlot();
                 var handPos = this.hand.getSlotPositionAtIndex(emptySlot);
-                if(card != null){
-                    card.move(handPos.x,handPos.y);
+                if (card != null) {
+                    card.move(handPos.x, handPos.y);
                     this.hand.addCard(card, emptySlot);
                 }
                 break;

@@ -109,6 +109,8 @@ public class PuddingInputProcessor implements InputProcessor {
         this.draggingCard = hitCard;
         this.draggingCard.getPlayer().getBoard().removeCard(this.draggingCard);
         this.draggingCard.getPlayer().getBoard().snapShot();
+        this.draggingCard.getPlayer().getHand().removeCard(this.draggingCard);
+        this.draggingCard.getPlayer().getHand().snapShot();
 
     }
 
@@ -118,19 +120,32 @@ public class PuddingInputProcessor implements InputProcessor {
         if (draggingCard != null) {
             Board board = draggingCard.getPlayer().getBoard();
             Gdx.app.log("Board before touchUp", Arrays.toString(board.getCards()));
-            var targetSlot = board.getIndexUnderMouse(coordinates);
-            if (targetSlot == -1) {
+            var boardTargetSlot = board.getIndexUnderMouse(coordinates);
+            if (boardTargetSlot == -1) {
                 board.restoreSnapshot();
             } else {
-                if (board.getCardAtIndex(targetSlot) == null) {
-                    if (board.onTheLeft(targetSlot)) targetSlot = board.nearestFreeSlotOnLeft(targetSlot);
-                    else if (!board.onTheLeft(targetSlot)) targetSlot = board.nearestFreeSlotOnRight(targetSlot);
-                    board.addCard(this.draggingCard, targetSlot);
+                if (board.getCardAtIndex(boardTargetSlot) == null) {
+                    if (board.onTheLeft(boardTargetSlot)) boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
+                    else if (!board.onTheLeft(boardTargetSlot)) boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
+                    board.addCard(this.draggingCard, boardTargetSlot);
                 }
             }
             board.setPreviousTargetSlot(-1);
+
+            Hand hand = draggingCard.getPlayer().getHand();
+            Gdx.app.log("Hand before touchUp", Arrays.toString(hand.getCards()));
+            var handTargetSlot = hand.getIndexUnderMouse(coordinates);
+            if (handTargetSlot == -1) {
+                hand.restoreSnapshot();
+                hand.rebalance(-1);
+            } else {
+                if (hand.getCardAtIndex(handTargetSlot) == null) {
+                    hand.addCard(this.draggingCard, hand.firstEmptySlot());
+                }
+            }
+            hand.setPreviousTargetSlot(-1);
             this.draggingCard = null;
-            Gdx.app.log("Board after touchUp", Arrays.toString(board.getCards()));
+            Gdx.app.log("Hand after touchUp", Arrays.toString(hand.getCards()));
             return true;
         }
         return false;
@@ -151,6 +166,8 @@ public class PuddingInputProcessor implements InputProcessor {
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
             Board myBoard = this.draggingCard.getPlayer().getBoard();
             myBoard.handleHover(mouseCoords);
+            Hand myHand = this.draggingCard.getPlayer().getHand();
+            myHand.handleHover(mouseCoords);
 
         }
         return true;

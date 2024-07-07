@@ -106,7 +106,7 @@ public class Card extends Actor {
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
         myDiscardPile.addCard(this, emptyDiscardSlot);
-        this.move(myDiscardPile.getSlotPositionAtIndex().x, myDiscardPile.getSlotPositionAtIndex().y);
+        this.move(myDiscardPile.getSlotPositionAtIndex(0).x, myDiscardPile.getSlotPositionAtIndex(0).y);
     }
 
 

@@ -14,32 +14,23 @@ import static com.pear.pudding.model.Constants.*;
 
 @Getter
 @Setter
-public class DiscardPile {
-    float x;
-    float y;
-    float width;
-    float height;
-    float numberOfSlots;
-    Card[] cards;
-    public DiscardPile(float x, float y, float width, float height){
-        setNumberOfSlots(NUMBER_OF_DECK_SLOTS);
-        setX(x);
-        setY(y);
-        setWidth(width);
-        setHeight(height);
-        this.cards = new Card[(int) NUMBER_OF_DECK_SLOTS];
-        Gdx.app.log("DrawDeck", Arrays.toString(getCards()));
-    }
-
-    public Vector3 getSlotPositionAtIndex() {
-        var xPos = getX() + CARD_WIDTH;
-        var yPos = getY();
-        return new Vector3(xPos, yPos, 1);
+public class DiscardPile extends Deck {
+    public DiscardPile(float x, float y, float width, float height) {
+        super(x, y, width, height, NUMBER_OF_DECK_SLOTS);
+        Gdx.app.log("Discard Pile", Arrays.toString(getCards()));
     }
 
     public boolean isIndexEmpty(int index) {
         return cards[index] == null;
     }
+
+    @Override
+    public Vector3 getSlotPositionAtIndex(int index) {
+        var xPos = getX() + slotWidth;
+        var yPos = getY();
+        return new Vector3(xPos, yPos, 1);
+    }
+
 
     public boolean addCard(Card targetCard, int index) {
         if (index != -1 && isIndexEmpty(index)) {
@@ -55,5 +46,6 @@ public class DiscardPile {
                 return i;
             }
         }
-        return -1;    }
+        return -1;
+    }
 }
