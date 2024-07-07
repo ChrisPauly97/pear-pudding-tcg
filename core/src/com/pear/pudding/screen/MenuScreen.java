@@ -18,7 +18,6 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pear.pudding.MyGame;
-import com.pear.pudding.PearPudding;
 
 import static com.pear.pudding.model.Constants.*;
 
@@ -70,7 +69,7 @@ public class MenuScreen implements Screen {
         playButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                ((Game) Gdx.app.getApplicationListener()).setScreen(new PearPudding(manager));
+                ((Game) Gdx.app.getApplicationListener()).setScreen(new PearPudding(game,manager));
             }
         });
         optionsButton.addListener(new ClickListener() {

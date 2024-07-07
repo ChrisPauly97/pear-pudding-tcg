@@ -9,30 +9,29 @@ public class EndTurnClickListener extends ClickListener {
     private final Player player1;
     private final Player player2;
 
-    public EndTurnClickListener(Player player1, Player player2){
+    public EndTurnClickListener(Player player1, Player player2) {
         super();
         this.player1 = player1;
         this.player2 = player2;
     }
 
     @Override
-    public void clicked(InputEvent event, float x, float y){
+    public void clicked(InputEvent event, float x, float y) {
         Gdx.app.log("Button", "Pressed");
-        if(player1.isMyTurn()){
+        if (player1.isMyTurn()) {
             player1.setMyTurn(false);
             player2.setMyTurn(true);
-            player2.drawCard();
+            if (player2.getHand().getHandSize() < player2.getHand().getNUMBER_OF_SLOTS()) player2.drawCard();
             player2.setTotalMana(player2.getTotalMana() + 1);
             player2.setCurrentMana(player2.getTotalMana());
             player2.refreshBoard();
-        }else if(player2.isMyTurn()){
+        } else if (player2.isMyTurn()) {
             player1.setMyTurn(true);
             player2.setMyTurn(false);
-            player1.drawCard();
+            if (player1.getHand().getHandSize() < player1.getHand().getNUMBER_OF_SLOTS()) player1.drawCard();
             player1.setTotalMana(player1.getTotalMana() + 1);
             player1.setCurrentMana(player1.getTotalMana());
             player1.refreshBoard();
-
         }
     }
 

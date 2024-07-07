@@ -66,7 +66,7 @@ public class Card extends Actor {
         setCardText(cardText);
         setColor(color);
         setPlayer(player);
-        setFaceUp(true);
+        setFaceUp(false);
         Texture texture = new Texture(Gdx.files.internal("cardback.jpg"));
         var img = new Image(texture);
         img.setBounds(x, y, width, height);
@@ -92,7 +92,6 @@ public class Card extends Actor {
         }
         if (this.health <= 0) {
             moveToDiscardPile();
-
         } else {
             player.getBoard().restoreSnapshot();
 //            this.player.getBoard().onHover(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
@@ -106,6 +105,12 @@ public class Card extends Actor {
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
         myDiscardPile.addCard(this, emptyDiscardSlot);
+        switch(currentLocation){
+            case BOARD:
+                this.player.getBoard().removeCard(this);
+            case HAND:
+                this.player.getHand().removeCard(this);
+        }
         this.move(myDiscardPile.getSlotPositionAtIndex(0).x, myDiscardPile.getSlotPositionAtIndex(0).y, DISCARD);
     }
 
@@ -137,6 +142,10 @@ public class Card extends Actor {
         this.cardBack.setPosition(x, y);
         this.cardBackground.setPosition(x, y);
         this.currentLocation = location;
+        switch (location){
+            case BOARD, HAND -> faceUp = true;
+            case DISCARD, DRAWDECK  -> faceUp = false;
+        }
         if (getImage() != null) {
             this.image.setPosition(x, y + this.image.getHeight());
         }

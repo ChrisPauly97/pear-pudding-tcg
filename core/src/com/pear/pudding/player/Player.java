@@ -8,6 +8,7 @@ import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.pear.pudding.card.*;
 import com.pear.pudding.enums.Location;
@@ -24,7 +25,7 @@ import static com.pear.pudding.model.Constants.*;
 
 @Getter
 @Setter
-public class Player {
+public class Player extends Actor {
     private Integer totalMana = 0;
     private Integer currentMana = 0;
     private Integer health = 30;

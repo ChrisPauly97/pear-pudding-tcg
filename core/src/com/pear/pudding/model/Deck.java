@@ -91,6 +91,25 @@ public class Deck {
         }
     }
 
+    public int getHandSize(){
+        var cardCount = 0;
+        for (Card card : getCards()) {
+            if (card != null) {
+                cardCount++;
+            }
+        }
+        return cardCount;
+    }
+
+    public int lastPopulatedIndex(){
+        for (int i = cards.length-1; i >= 0 ; i--) {
+            if (cards[i] != null) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public boolean isIndexEmpty(int index) {
         return cards[index] == null;
     }
@@ -173,10 +192,10 @@ public class Deck {
 
 
     public Card getCardAtIndex(int index) {
-        if (cards[index] != null) {
-            return cards[index];
-        } else {
+        if(index == -1 || cards[index] == null){
             return null;
+        }else {
+            return cards[index];
         }
     }
 

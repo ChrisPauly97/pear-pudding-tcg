@@ -83,7 +83,7 @@ public class PuddingInputProcessor implements InputProcessor {
     private void handleLeftClick(Actor hitObject) {
         if (hitObject instanceof Card clickedCard) {
             if (clickedCard.getPlayer().isMyTurn() && clickedCard.getCurrentLocation() != ZOOM) {
-                resolveHitObject(clickedCard);
+                handleHitCard(clickedCard);
             }
         }
     }
@@ -103,50 +103,76 @@ public class PuddingInputProcessor implements InputProcessor {
         }
     }
 
-    public void resolveHitObject(Card hitCard) {
-        Gdx.app.log("Resolve Hit", hitCard.getClass().getSimpleName());
-        this.draggingCard = hitCard;
-        this.draggingCard.getPlayer().getBoard().removeCard(this.draggingCard);
-        this.draggingCard.getPlayer().getBoard().snapShot();
-        this.draggingCard.getPlayer().getHand().removeCard(this.draggingCard);
-        this.draggingCard.getPlayer().getHand().snapShot();
+    public void handleHitCard(Card card) {
+        if (card.getCurrentLocation() == Location.BOARD || card.getCurrentLocation() == Location.HAND) {
+            card.getPlayer().getBoard().removeCard(card);
+            card.getPlayer().getHand().removeCard(card);
+            card.getPlayer().getBoard().snapShot();
+            card.getPlayer().getHand().snapShot();
+            draggingCard = card;
+        }
     }
 
-    public boolean touchUp(int xCoord, int yCoord, int pointer, int button) {
-        Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
-        if (draggingCard != null) {
-            Gdx.app.log("Dragging Card", draggingCard.getClass().getSimpleName() + " " + draggingCard.getCurrentLocation());
-            Board board = draggingCard.getPlayer().getBoard();
-            Gdx.app.log("Board before touchUp", Arrays.toString(board.getCards()));
-            var boardTargetSlot = board.getIndexUnderMouse(coordinates);
-            if (boardTargetSlot == -1) {
-                board.restoreSnapshot();
-            } else {
-                if (board.getCardAtIndex(boardTargetSlot) == null) {
-                    if (board.onTheLeft(boardTargetSlot)) boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
-                    else if (!board.onTheLeft(boardTargetSlot)) boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
-                    board.addCard(this.draggingCard, boardTargetSlot);
-                }
-            }
-            board.setPreviousTargetSlot(-1);
+    public boolean touchUp(int x, int y, int pointer, int button) {
+        Vector3 coordinates = camera.unproject(new Vector3(x, y, camera.position.z));
 
-            Hand hand = draggingCard.getPlayer().getHand();
-            Gdx.app.log("Hand before touchUp", Arrays.toString(hand.getCards()));
-            var handTargetSlot = hand.getIndexUnderMouse(coordinates);
-            if (handTargetSlot == -1) {
-                hand.restoreSnapshot();
-                hand.rebalance(-1);
-            } else {
-                if (hand.getCardAtIndex(handTargetSlot) == null) {
-                    hand.addCard(this.draggingCard, hand.firstEmptySlot());
+        if (draggingCard != null) {
+            Board playerBoard = draggingCard.getPlayer().getBoard();
+            Hand playerHand = draggingCard.getPlayer().getHand();
+            Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
+
+            int boardTargetSlot = playerBoard.getIndexUnderMouse(coordinates);
+            int handTargetSlot = playerHand.getIndexUnderMouse(coordinates);
+            int enemyTargetSlot = enemyBoard.getIndexUnderMouse(coordinates);
+
+            if (boardTargetSlot >= 0) {
+                if (playerBoard.getCardAtIndex(boardTargetSlot) == null) {
+                    if (playerBoard.onTheLeft(boardTargetSlot))
+                        boardTargetSlot = playerBoard.nearestFreeSlotOnLeft(boardTargetSlot);
+                    else
+                        boardTargetSlot = playerBoard.nearestFreeSlotOnRight(boardTargetSlot);
+
+                    playerBoard.addCard(draggingCard, boardTargetSlot);
                 }
+            } else if (handTargetSlot != -1) {
+                if (playerHand.getCardAtIndex(handTargetSlot) == null) {
+                    playerHand.addCard(draggingCard, playerHand.firstEmptySlot());
+                }
+            } else if (enemyTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyTargetSlot) != null) {
+                draggingCard.fight(enemyBoard.getCardAtIndex(enemyTargetSlot));
+                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+            } else {
+                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
             }
-            hand.setPreviousTargetSlot(-1);
-            this.draggingCard = null;
-            Gdx.app.log("Hand after touchUp", Arrays.toString(hand.getCards()));
+
+            draggingCard = null;
             return true;
         }
+
         return false;
+    }
+
+    public void resetToPreviousLocation(int boardTargetSlot, Board board, Hand hand){
+        switch (draggingCard.getCurrentLocation()) {
+            case BOARD:
+                if (boardTargetSlot == -1) {
+                    board.restoreSnapshot();
+                    if (board.getCardAtIndex(boardTargetSlot) == null) {
+                        if (board.onTheLeft(boardTargetSlot))
+                            boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
+                        else if (!board.onTheLeft(boardTargetSlot))
+                            boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
+                        board.addCard(this.draggingCard, boardTargetSlot);
+                    }
+                }
+                board.setPreviousTargetSlot(-1);
+                break;
+            case HAND:
+                hand.restoreSnapshot();
+                hand.addCard(this.draggingCard, hand.firstEmptySlot());
+                hand.rebalance(-1);
+                hand.setPreviousTargetSlot(-1);
+        }
     }
 
     @Override
@@ -166,8 +192,12 @@ public class PuddingInputProcessor implements InputProcessor {
             myBoard.handleHover(mouseCoords);
             Hand myHand = this.draggingCard.getPlayer().getHand();
             myHand.handleHover(mouseCoords);
-
+            stage.getBatch().begin();
+            myBoard.draw(stage.getBatch());
+            myHand.draw(stage.getBatch());
+            stage.getBatch().end();
         }
+
         return true;
     }
 

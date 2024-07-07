@@ -30,6 +30,14 @@ public class DrawDeck extends Deck {
         return new Vector3(xPos, yPos, 1);
     }
 
+    @Override
+    public void draw(Batch batch){
+        var lastPopulatedIndex = this.lastPopulatedIndex();
+        if(lastPopulatedIndex != -1){
+            this.cards[lastPopulatedIndex].draw(batch, 1);
+        }
+    }
+
 
     public void shuffle() {
         List<Card> cardsList = Arrays.asList(cards);

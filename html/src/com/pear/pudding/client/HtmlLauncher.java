@@ -4,7 +4,6 @@ import com.badlogic.gdx.ApplicationListener;
 import com.badlogic.gdx.backends.gwt.GwtApplication;
 import com.badlogic.gdx.backends.gwt.GwtApplicationConfiguration;
 import com.pear.pudding.MyGame;
-import com.pear.pudding.PearPudding;
 
 public class HtmlLauncher extends GwtApplication {
 
