@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static com.pear.pudding.enums.Location.HAND;
 import static com.pear.pudding.model.Constants.*;
 
 @Getter
@@ -63,7 +64,7 @@ public class Player {
                 case 2, 5 -> new Zombie(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
                 default -> new Ghoul(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
             };
-            card.setCurrentLocation(Location.DRAW);
+            card.setCurrentLocation(Location.DRAWDECK);
             this.drawDeck.addCard(card, i);
             stage.addActor(card);
         }
@@ -107,7 +108,7 @@ public class Player {
                 var emptySlot = this.hand.firstEmptySlot();
                 var handPos = this.hand.getSlotPositionAtIndex(emptySlot);
                 if (card != null) {
-                    card.move(handPos.x, handPos.y);
+                    card.move(handPos.x, handPos.y, HAND);
                     this.hand.addCard(card, emptySlot);
                 }
                 break;

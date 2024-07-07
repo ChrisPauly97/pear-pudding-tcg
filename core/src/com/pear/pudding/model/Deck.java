@@ -1,7 +1,9 @@
 package com.pear.pudding.model;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Vector3;
+import com.pear.pudding.enums.Location;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -42,7 +44,7 @@ public class Deck {
         for (int i = 0; i < cards.length; i++) {
             if (cards[i] != null) {
                 var targetSlotPos = getSlotPositionAtIndex(i);
-                cards[i].move(targetSlotPos.x, targetSlotPos.y);
+                cards[i].move(targetSlotPos.x, targetSlotPos.y, Location.getEnum(this.getClass().getSimpleName()));
             }
         }
         snapShot();
@@ -106,7 +108,7 @@ public class Deck {
         if (index != -1) {
             this.cards[index] = targetCard;
             var targetSlotPos = getSlotPositionAtIndex(index);
-            targetCard.move(targetSlotPos.x, targetSlotPos.y);
+            targetCard.move(targetSlotPos.x, targetSlotPos.y, Location.getEnum(this.getClass().getSimpleName()));
             return true;
         }
         return false;
@@ -119,7 +121,7 @@ public class Deck {
             Card nextCard = getCards()[i + 1];
             if (currentCard == null && nextCard != null) {
                 var newSlotPos = getSlotPositionAtIndex(i);
-                getCards()[i + 1].move(newSlotPos.x, newSlotPos.y);
+                getCards()[i + 1].move(newSlotPos.x, newSlotPos.y, getCards()[i+1].getCurrentLocation());
                 addCard(nextCard, i);
                 removeCard(i + 1);
             }
@@ -133,7 +135,7 @@ public class Deck {
             Card previousCard = getCards()[i - 1];
             if (currentCard == null && previousCard != null) {
                 var newSlotPos = getSlotPositionAtIndex(i);
-                getCards()[i - 1].move(newSlotPos.x, newSlotPos.y);
+                getCards()[i - 1].move(newSlotPos.x, newSlotPos.y, getCards()[i-1].getCurrentLocation());
                 addCard(previousCard, i);
                 removeCard(i - 1);
             }

@@ -57,7 +57,7 @@ public class Card extends Actor {
                 CardType type, CardClass cardClass, String cardText, Player player) {
         setManager(player.getManager());
         setBounds(x, y, width, height);
-        setCurrentLocation(DRAW);
+        setCurrentLocation(DRAWDECK);
         setAttack(attack);
         setHealth(health);
         setCost(cost);
@@ -106,7 +106,7 @@ public class Card extends Actor {
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
         myDiscardPile.addCard(this, emptyDiscardSlot);
-        this.move(myDiscardPile.getSlotPositionAtIndex(0).x, myDiscardPile.getSlotPositionAtIndex(0).y);
+        this.move(myDiscardPile.getSlotPositionAtIndex(0).x, myDiscardPile.getSlotPositionAtIndex(0).y, DISCARD);
     }
 
 
@@ -132,10 +132,11 @@ public class Card extends Actor {
 //        setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
 //    }
 
-    public void move(float x, float y) {
+    public void move(float x, float y, Location location) {
         setPosition(x, y);
         this.cardBack.setPosition(x, y);
         this.cardBackground.setPosition(x, y);
+        this.currentLocation = location;
         if (getImage() != null) {
             this.image.setPosition(x, y + this.image.getHeight());
         }

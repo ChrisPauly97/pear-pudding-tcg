@@ -9,7 +9,7 @@ import lombok.Setter;
 
 import java.util.Arrays;
 
-import static com.pear.pudding.enums.Location.DRAW;
+import static com.pear.pudding.enums.Location.DRAWDECK;
 import static com.pear.pudding.model.Constants.*;
 
 @Getter
