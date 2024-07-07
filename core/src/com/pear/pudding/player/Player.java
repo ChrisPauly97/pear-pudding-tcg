@@ -55,8 +55,8 @@ public class Player {
 
     public void initializeDeck(Stage stage) {
         Card card;
-        for(int i = 0; i < drawDeck.getNUMBER_OF_SLOTS(); i++){
-            Vector3 slotPos = drawDeck.getSlotPositionAtIndex(i);
+        for(int i = 0; i < drawDeck.getCards().length; i++){
+            Vector3 slotPos = drawDeck.getSlotPositionAtIndex();
             card = switch (i) {
                 case 0, 3 -> new Ghost(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
                 case 1, 4 -> new Skeleton(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
@@ -108,7 +108,6 @@ public class Player {
                 var handPos = this.hand.getSlotPositionAtIndex(emptySlot);
                 if(card != null){
                     card.move(handPos.x,handPos.y);
-                    card.setCurrentLocation(Location.HAND);
                     this.hand.addCard(card, emptySlot);
                 }
                 break;

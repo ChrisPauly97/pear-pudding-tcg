@@ -21,7 +21,6 @@ import static com.pear.pudding.enums.Location.*;
 public class PuddingInputProcessor implements InputProcessor {
     Map<Integer, Boolean> stateMap = new HashMap<>();
     Card draggingCard;
-    private Slot previousTargetSlot;
     private final Stage stage;
     private final OrthographicCamera camera;
     private final Player player1;
@@ -75,9 +74,10 @@ public class PuddingInputProcessor implements InputProcessor {
 
         if (button == Input.Buttons.LEFT) {
             handleLeftClick(hitObject);
-        } else if (button == Input.Buttons.RIGHT) {
-            handleRightClick(hitObject);
         }
+//        } else if (button == Input.Buttons.RIGHT) {
+//            handleRightClick(hitObject);
+//        }
         return true;
     }
 
@@ -89,37 +89,27 @@ public class PuddingInputProcessor implements InputProcessor {
         }
     }
 
-    private void handleRightClick(Actor hitObject) {
-        if (hitObject instanceof Card clickedCard) {
-            Location currentLocation = clickedCard.getCurrentLocation();
-            if (currentLocation == HAND && !player1.getHand().isCardZoomed()) {
-                clickedCard.zoom();
-                player1.getHand().setCardZoomed(true);
-                clickedCard.setCurrentLocation(ZOOM);
-            } else if (currentLocation == ZOOM) {
-//                clickedCard.reverseZoom();
-                player1.getHand().setCardZoomed(false);
-                clickedCard.setCurrentLocation(HAND);
-            }
-        }
-    }
+//    private void handleRightClick(Actor hitObject) {
+//        if (hitObject instanceof Card clickedCard) {
+//            Location currentLocation = clickedCard.getCurrentLocation();
+//            if (currentLocation == HAND && !player1.getHand().isCardZoomed()) {
+//                clickedCard.zoom();
+//                player1.getHand().setCardZoomed(true);
+//                clickedCard.setCurrentLocation(ZOOM);
+//            } else if (currentLocation == ZOOM) {
+////                clickedCard.reverseZoom();
+//                player1.getHand().setCardZoomed(false);
+//                clickedCard.setCurrentLocation(HAND);
+//            }
+//        }
+//    }
 
     public void resolveHitObject(Card hitCard) {
-        Gdx.app.log("Resolve Hit", hitCard.getClass().getSimpleName() + ", " + hitCard.getCurrentLocation());
-        switch (hitCard.getCurrentLocation()) {
-            case HAND:
-                this.draggingCard = hitCard;
-                this.draggingCard.getPlayer().getBoard().snapShot();
-//                this.draggingCard.getPlayer().getHand().snapShot();
-//                this.draggingCard.getPlayer().getHand().removeCard(this.draggingCard);
-                break;
-            case BOARD:
-                this.draggingCard = hitCard;
-                this.draggingCard.getPlayer().getBoard().snapShot();
-//                this.draggingCard.getPlayer().getBoard().removeCard(this.draggingCard);
-            case DRAW, DISCARD:
-                break;
-        }
+        Gdx.app.log("Resolve Hit", hitCard.getClass().getSimpleName());
+        this.draggingCard = hitCard;
+        this.draggingCard.getPlayer().getBoard().removeCard(this.draggingCard);
+        this.draggingCard.getPlayer().getBoard().snapShot();
+
     }
 
 
@@ -127,32 +117,20 @@ public class PuddingInputProcessor implements InputProcessor {
         Vector3 coordinates = camera.unproject(new Vector3(xCoord, yCoord, camera.position.z));
         if (draggingCard != null) {
             Board board = draggingCard.getPlayer().getBoard();
-            Hand hand = draggingCard.getPlayer().getHand();
             Gdx.app.log("Board before touchUp", Arrays.toString(board.getCards()));
-            Gdx.app.log("Hand before touchUp", Arrays.toString(hand.getCards()));
-            // If you're hovering over a slot on the board
-            var slot = board.handleHover(coordinates);
-//            var handSlot = hand.handleHover(coordinates);
-
-            if(slot != -1) {
-                var targetSlotPos = board.getSlotPositionAtIndex(slot);
-                board.addCard(this.draggingCard, slot);
-                this.draggingCard.move(targetSlotPos.x, targetSlotPos.y);
-                this.draggingCard.setCurrentLocation(BOARD);
-//            }else if(handSlot != -1) {
-//                var targetSlotPos = hand.getSlotPositionAtIndex(handSlot);
-//                hand.addCard(this.draggingCard, handSlot);
-//                this.draggingCard.move(targetSlotPos.x, targetSlotPos.y);
-//                this.draggingCard.setCurrentLocation(HAND);
-            }else{
+            var targetSlot = board.getIndexUnderMouse(coordinates);
+            if (targetSlot == -1) {
                 board.restoreSnapshot();
-//                hand.restoreSnapshot();
-
+            } else {
+                if (board.getCardAtIndex(targetSlot) == null) {
+                    if (board.onTheLeft(targetSlot)) targetSlot = board.nearestFreeSlotOnLeft(targetSlot);
+                    else if (!board.onTheLeft(targetSlot)) targetSlot = board.nearestFreeSlotOnRight(targetSlot);
+                    board.addCard(this.draggingCard, targetSlot);
+                }
             }
-
+            board.setPreviousTargetSlot(-1);
             this.draggingCard = null;
             Gdx.app.log("Board after touchUp", Arrays.toString(board.getCards()));
-            Gdx.app.log("Hand after touchUp", Arrays.toString(hand.getCards()));
             return true;
         }
         return false;
@@ -173,16 +151,9 @@ public class PuddingInputProcessor implements InputProcessor {
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y);
             Board myBoard = this.draggingCard.getPlayer().getBoard();
             myBoard.handleHover(mouseCoords);
-//            hand.removeCard(this.draggingCard);
-//            hand.rebalance();
-//            Hand myHand = this.draggingCard.getPlayer().getHand();
-//            myHand.handleHover(mouseCoords);
-            this.stage.getBatch().begin();
-            this.draggingCard.draw(this.stage.getBatch(), 1f);
-            this.stage.getBatch().end();
 
         }
-        return false;
+        return true;
     }
 
 

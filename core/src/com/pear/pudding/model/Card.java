@@ -93,15 +93,8 @@ public class Card extends Actor {
         if (this.health <= 0) {
             moveToDiscardPile();
 
-        }else {
-            switch(getCurrentLocation()) {
-                case HAND:
-                    player.getHand().restoreSnapshot();
-                    break;
-                case BOARD:
-                    player.getBoard().restoreSnapshot();
-                    break;
-            }
+        } else {
+            player.getBoard().restoreSnapshot();
 //            this.player.getBoard().onHover(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
 //             return to previous position
 //            this.moveToPreviousPosition();
@@ -110,13 +103,11 @@ public class Card extends Actor {
 //
 
     public void moveToDiscardPile() {
-        setCurrentLocation(DISCARD);
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
         myDiscardPile.addCard(this, emptyDiscardSlot);
-        this.move(myDiscardPile.getSlotPositionAtIndex(emptyDiscardSlot).x, myDiscardPile.getSlotPositionAtIndex(emptyDiscardSlot).y);
+        this.move(myDiscardPile.getSlotPositionAtIndex().x, myDiscardPile.getSlotPositionAtIndex().y);
     }
-
 
 
     public void zoom() {
