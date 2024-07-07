@@ -142,7 +142,7 @@ public class Board implements Deck {
                     Gdx.app.log("Board before balance", Arrays.toString(this.getCards()));
                     rebalance(targetSlot);
                     Gdx.app.log("Board after balance", Arrays.toString(this.getCards()));
-                }else{
+                } else {
                     Gdx.app.log("Board before restoreSnapshot", Arrays.toString(this.getCards()));
                     restoreSnapshot();
                     rebalance(targetSlot);
@@ -163,55 +163,56 @@ public class Board implements Deck {
 
     }
 
+    public void shiftLeft(int startSlot, int targetSlot){
+        // If not balanced, shift one more to the left
+        for (int i = startSlot; i < targetSlot; i++) {
+            Card currentCard = getCards()[i];
+            Card nextCard = getCards()[i + 1];
+            if (currentCard == null && nextCard != null) {
+                var newSlotPos = getSlotPositionAtIndex(i);
+                getCards()[i + 1].move(newSlotPos.x, newSlotPos.y);
+                addCard(nextCard, i);
+                removeCard(i + 1);
+            }
+        }
+    }
+    public void shiftRight(int startSlot, int targetSlot){
+        // If not balanced, shift one more to the right
+        for (int i = startSlot; i > targetSlot; i--) {
+            Card currentCard = getCards()[i];
+            Card previousCard = getCards()[i - 1];
+            if (currentCard == null && previousCard != null) {
+                var newSlotPos = getSlotPositionAtIndex(i);
+                getCards()[i - 1].move(newSlotPos.x, newSlotPos.y);
+                addCard(previousCard, i);
+                removeCard(i - 1);
+            }
+        }
+    }
+
 
     // mak
 
     public void rebalance(int targetSlot) {
-//        Gdx.app.log("Rebalancing", "around " + targetSlot);
-        // 1
         var nearestFreeSlotLeft = nearestFreeSlotFromMiddleOnLeft();
-//        Gdx.app.log("Rebalancing", "nearestFreeSlotFromMiddleOnLeft  " + nearestFreeSlotLeft);
-        // 4
         var nearestFreeSlotRight = nearestFreeSlotFromMiddleOnRight();
-//        Gdx.app.log("Rebalancing", "nearestFreeSlotFromMiddleOnRight  " + nearestFreeSlotRight);
+        if(nearestFreeSlotLeft == -1 && nearestFreeSlotRight == -1) {
+            nearestFreeSlotLeft = middleSlot();
+        }
 
-        // 1
         var distanceToMiddleFromLeft = calculateDistance(middleSlot(), nearestFreeSlotLeft);
-//        Gdx.app.log("Rebalancing", "distance from middle to nearest left free slot " + distanceToMiddleFromLeft);
-
-        // 2
         var distanceToMiddleFromRight = calculateDistance(middleSlot(), nearestFreeSlotRight);
-//        Gdx.app.log("Rebalancing", "distance from middle to nearest right free slot " + distanceToMiddleFromRight);
 
-        // most of the objects are on the right
-        if (distanceToMiddleFromLeft < distanceToMiddleFromRight) {
-            //targetSlot = 2
+        if (nearestFreeSlotLeft == -1 && targetSlot > middleSlot()) {
+            shiftLeft(nearestFreeSlotRight, targetSlot);
+        } else if (nearestFreeSlotRight == -1 && targetSlot < middleSlot()) {
+            shiftRight(nearestFreeSlotLeft, targetSlot);
+        } else if (distanceToMiddleFromLeft < distanceToMiddleFromRight) {
             if (targetSlot == -1) targetSlot = nearestFreeSlotRight;
-//            Gdx.app.log("Rebalancing", "shifting left " + targetSlot);
-            // If not balanced, shift one more to the left
-            for (int i = nearestFreeSlotLeft; i < targetSlot; i++) {
-                Card currentCard = getCards()[i];
-                Card nextCard = getCards()[i + 1];
-                if (currentCard == null && nextCard != null) {
-                    var newSlotPos = getSlotPositionAtIndex(i);
-                    getCards()[i + 1].move(newSlotPos.x, newSlotPos.y);
-                    addCard(nextCard, i);
-                    removeCard(i + 1);
-                }
-            }
+            shiftLeft(nearestFreeSlotLeft, targetSlot);
         } else {
             if (targetSlot == -1) targetSlot = nearestFreeSlotLeft;
-// If not balanced, shift one more to the right
-            for (int i = nearestFreeSlotRight; i > targetSlot; i--) {
-                Card currentCard = getCards()[i];
-                Card previousCard = getCards()[i - 1];
-                if (currentCard == null && previousCard != null) {
-                    var newSlotPos = getSlotPositionAtIndex(i);
-                    getCards()[i - 1].move(newSlotPos.x, newSlotPos.y);
-                    addCard(previousCard, i);
-                    removeCard(i - 1);
-                }
-            }
+            shiftRight(nearestFreeSlotRight, targetSlot);
         }
     }
 
