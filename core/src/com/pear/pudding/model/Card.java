@@ -100,6 +100,25 @@ public class Card extends Actor {
 
     }
 
+    public void resetToPreviousLocation() {
+        Gdx.app.log("Reset", this.getCurrentLocation().toString());
+        switch (this.getCurrentLocation()) {
+            case BOARD:
+                var board = getPlayer().getBoard();
+                board.restoreSnapshot();
+                var nearestFreeSlot = board.nearestFreeSlot();
+                board.addCard(this, nearestFreeSlot);
+                board.setPreviousTargetSlot(-1);
+                break;
+            case HAND:
+                var hand = getPlayer().getHand();
+                hand.restoreSnapshot();
+                hand.addCard(this, hand.firstEmptySlot());
+                hand.rebalance(-1);
+                hand.setPreviousTargetSlot(-1);
+        }
+    }
+
     public void fight(Card enemy) {
         this.health -= enemy.getAttack();
         enemy.health -= getAttack();
@@ -110,6 +129,7 @@ public class Card extends Actor {
             moveToDiscardPile();
         } else {
             player.getBoard().restoreSnapshot();
+            resetToPreviousLocation();
 //            this.player.getBoard().onHover(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
 //             return to previous position
 //            this.moveToPreviousPosition();

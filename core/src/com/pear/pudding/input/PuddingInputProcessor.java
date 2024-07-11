@@ -13,6 +13,7 @@ import com.pear.pudding.model.*;
 import com.pear.pudding.enums.Location;
 import com.pear.pudding.player.Hero;
 import com.pear.pudding.player.Player;
+import com.pear.pudding.screen.GameOverScreen;
 import com.pear.pudding.screen.MenuScreen;
 
 import java.util.Arrays;
@@ -123,14 +124,16 @@ public class PuddingInputProcessor implements InputProcessor {
 
         if (draggingCard != null) {
             Board playerBoard = draggingCard.getPlayer().getBoard();
+            Hero playerHero = draggingCard.getPlayer().getHero();
             Hand playerHand = draggingCard.getPlayer().getHand();
             Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
             Hero enemyHero = player1.isMyTurn() ? player2.getHero() : player1.getHero();
+            Hand enemyHand = player1.isMyTurn() ? player2.getHand() : player1.getHand();
             int boardTargetSlot = playerBoard.getIndexUnderMouse(coordinates);
             int handTargetSlot = playerHand.getIndexUnderMouse(coordinates);
             int enemyTargetSlot = enemyBoard.getIndexUnderMouse(coordinates);
             boolean enemyHeroTargeted = enemyHero.contains(coordinates);
-            if (boardTargetSlot >= 0) {
+            if (boardTargetSlot != -1) {
                 Gdx.app.log("Board", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
                 if (playerBoard.getCardAtIndex(boardTargetSlot) == null) {
                     if (playerBoard.onTheLeft(boardTargetSlot))
@@ -140,28 +143,40 @@ public class PuddingInputProcessor implements InputProcessor {
 
                     playerBoard.addCard(draggingCard, boardTargetSlot);
                 }
-            } else if (handTargetSlot != -1) {
-                Gdx.app.log("Hand", draggingCard.getCurrentLocation() + " " + handTargetSlot);
-                if (playerHand.getCardAtIndex(handTargetSlot) == null) {
-                    playerHand.addCard(draggingCard, playerHand.firstEmptySlot());
-                }
-            } else if (enemyTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyTargetSlot) != null) {
+            }
+//            else if (handTargetSlot != -1) {
+//                Gdx.app.log("Hand", draggingCard.getCurrentLocation() + " " + handTargetSlot);
+//                if (playerHand.getCardAtIndex(handTargetSlot) == null) {
+//                    playerHand.addCard(draggingCard, playerHand.firstEmptySlot());
+//                }
+//            }
+            else if (enemyTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyTargetSlot) != null) {
                 Gdx.app.log("Enemy", draggingCard.getCurrentLocation() + " " + enemyTargetSlot);
-                draggingCard.fight(enemyBoard.getCardAtIndex(enemyTargetSlot));
-                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+                if(draggingCard.getAttackCount() > 0){
+                    draggingCard.fight(enemyBoard.getCardAtIndex(enemyTargetSlot));
+                }else{
+                    this.draggingCard.resetToPreviousLocation();
+                }
             } else if (enemyHeroTargeted) {
                 Gdx.app.log("Hero", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
                 boolean gameOver = draggingCard.fight(enemyHero);
                 if (gameOver) {
-                    game.setScreen(new MenuScreen(game));
+                    game.setScreen(new GameOverScreen(game));
                 }else {
-                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+                    this.draggingCard.resetToPreviousLocation();
                 }
             } else {
                 Gdx.app.log("No target", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
-                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+                this.draggingCard.resetToPreviousLocation();
             }
-
+            stage.getBatch().begin();
+            playerBoard.draw(stage.getBatch());
+            playerHand.draw(stage.getBatch());
+            playerHero.draw(stage.getBatch());
+            enemyBoard.draw(stage.getBatch());
+            enemyHero.draw(stage.getBatch());
+            enemyHand.draw(stage.getBatch());
+            stage.getBatch().end();
             draggingCard = null;
             return true;
         }
@@ -169,27 +184,7 @@ public class PuddingInputProcessor implements InputProcessor {
         return false;
     }
 
-    public void resetToPreviousLocation(int boardTargetSlot, Board board, Hand hand) {
-        Gdx.app.log("Reset", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
-        switch (draggingCard.getCurrentLocation()) {
-            case BOARD:
-                board.restoreSnapshot();
-                if (board.getCardAtIndex(boardTargetSlot) == null) {
-                    if (board.onTheLeft(boardTargetSlot))
-                        boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
-                    else if (!board.onTheLeft(boardTargetSlot))
-                        boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
-                    board.addCard(this.draggingCard, boardTargetSlot);
-                }
-                board.setPreviousTargetSlot(-1);
-                break;
-            case HAND:
-                hand.restoreSnapshot();
-                hand.addCard(this.draggingCard, hand.firstEmptySlot());
-                hand.rebalance(-1);
-                hand.setPreviousTargetSlot(-1);
-        }
-    }
+
 
     @Override
     public boolean touchCancelled(int screenX, int screenY, int pointer, int button) {

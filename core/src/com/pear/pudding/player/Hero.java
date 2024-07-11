@@ -1,5 +1,6 @@
 package com.pear.pudding.player;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -19,7 +20,7 @@ public class Hero extends Actor {
     private final Texture texture;
     private final float rotation;
     public int attack = 2;
-    public int health = 30;
+    public int health = 3;
     public Hero(Texture heroTexture, float xPos, float yPos, float rotateBy) {
         setX(xPos);
         setY(yPos);
@@ -32,11 +33,10 @@ public class Hero extends Actor {
     }
 
     public boolean contains(Vector3 point) {
-        float minX = getX();
-        float minY = getY();
-        float maxX = getX() + getWidth();
-        float maxY = getY() + getHeight();
-
+        float minX = getX() - getOriginX();
+        float minY = getY() - getOriginY();
+        float maxX = getX() - getOriginX() + getWidth();
+        float maxY = getY() - getOriginY() + getHeight();
         return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
     }
 

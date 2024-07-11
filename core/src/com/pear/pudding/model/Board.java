@@ -65,6 +65,22 @@ public class Board extends Deck {
         return -1;
     }
 
+    public int nearestFreeSlot() {
+        var nearestFreeSlotLeft = nearestFreeSlotFromMiddleOnLeft();
+        var nearestFreeSlotRight = nearestFreeSlotFromMiddleOnRight();
+        Gdx.app.log("Finding Nearest Slot ", nearestFreeSlotLeft + ", " + nearestFreeSlotRight);
+        if(getCardAtIndex(middleSlot()) == null){
+            return middleSlot();
+        }
+        var distanceToMiddleFromLeft = calculateDistance(middleSlot(), nearestFreeSlotLeft);
+        var distanceToMiddleFromRight = calculateDistance(middleSlot(), nearestFreeSlotRight);
+        if(distanceToMiddleFromLeft < distanceToMiddleFromRight){
+            return nearestFreeSlotLeft;
+        }else{
+            return nearestFreeSlotRight;
+        }
+    }
+
     public void rebalance(int targetSlot) {
         var nearestFreeSlotLeft = nearestFreeSlotFromMiddleOnLeft();
         var nearestFreeSlotRight = nearestFreeSlotFromMiddleOnRight();
