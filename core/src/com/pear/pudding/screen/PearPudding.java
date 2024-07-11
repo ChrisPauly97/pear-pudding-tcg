@@ -5,7 +5,6 @@ import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
-import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Button;
@@ -17,7 +16,9 @@ import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.MyGame;
 import com.pear.pudding.input.EndTurnClickListener;
 import com.pear.pudding.input.PuddingInputProcessor;
+import com.pear.pudding.model.Card;
 import com.pear.pudding.player.Player;
+
 
 import static com.pear.pudding.model.Constants.*;
 
@@ -37,19 +38,24 @@ public class PearPudding implements Screen {
     Button backButton;
     Button endTurnButton;
 
-    public PearPudding(MyGame game, AssetManager manager) {
+    public PearPudding(MyGame game, AssetManager manager, Player player1, Player player2) {
         try {
             this.manager = manager;
-            player1 = new Player(true, manager);
-            player2 = new Player(false, manager);
+            this.player1 = player1;
+            this.player2 = player2;
             camera = new OrthographicCamera();
             camera.setToOrtho(false, 100, 100);
             FitViewport viewp = new FitViewport(WINDOW_WIDTH, WINDOW_HEIGHT, camera);
-            stage = new Stage(viewp);
+            this.stage = new Stage(viewp);
+            for(Card c: player1.getDrawDeck().getCards()){
+                stage.addActor(c);
+            }
+            for(Card c: player2.getDrawDeck().getCards()){
+                stage.addActor(c);
+            }
             stage.addActor(player1.getHero());
             stage.addActor(player2.getHero());
-            player1.initializeDeck(stage);
-            player2.initializeDeck(stage);
+
             Button buttonEndTurn = new TextButton("End Turn", manager.get("uiskin.json", Skin.class));
             buttonEndTurn.addListener(new EndTurnClickListener(player1, player2));
             buttonEndTurn.setBounds(WINDOW_WIDTH - 100 - BUFFER, WINDOW_HEIGHT / 2, 100, 40);
@@ -58,7 +64,6 @@ public class PearPudding implements Screen {
             backButton.addListener(new ClickListener() {
                 @Override
                 public void clicked(InputEvent event, float x, float y) {
-                    stage.dispose();
                     game.setScreen(new MenuScreen(game));
                 }
             });
@@ -71,7 +76,7 @@ public class PearPudding implements Screen {
             player1.drawCard();
             player1.setTotalMana(player1.getTotalMana() + 1);
             player1.setCurrentMana(player1.getTotalMana());
-            inputProcessor = new PuddingInputProcessor(stage, player1, player2, camera);
+            inputProcessor = new PuddingInputProcessor(game, stage, player1, player2, camera);
             InputMultiplexer multiplexer = new InputMultiplexer();
             multiplexer.addProcessor(stage);
             multiplexer.addProcessor(inputProcessor); // Your screen

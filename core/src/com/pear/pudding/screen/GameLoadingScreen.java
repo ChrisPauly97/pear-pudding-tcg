@@ -17,14 +17,16 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
-import com.pear.pudding.loading.LoadingBar;
 import com.pear.pudding.MyGame;
+import com.pear.pudding.loading.LoadingBar;
 import com.pear.pudding.player.Player;
+
+import static java.lang.Thread.sleep;
 
 /**
  * @author Mats Svensson
  */
-public class LoadingScreen extends AbstractScreen {
+public class GameLoadingScreen extends AbstractScreen {
 
     private Stage stage;
 
@@ -41,7 +43,7 @@ public class LoadingScreen extends AbstractScreen {
 
     private Actor loadingBar;
 
-    public LoadingScreen(MyGame game) {
+    public GameLoadingScreen(MyGame game) {
         super(game);
     }
 
@@ -81,8 +83,22 @@ public class LoadingScreen extends AbstractScreen {
         stage.addActor(loadingFrame);
         stage.addActor(logo);
 
-        game.manager.load("uiskin.json", Skin.class);
-
+        // Add everything to be loaded, for instance:
+        game.manager.load("background.png", Texture.class);
+        game.manager.load("card.png", Texture.class);
+        game.manager.load("cardback.jpg", Texture.class);
+        game.manager.load("default.png", Texture.class);
+        game.manager.load("ghost.png", Texture.class);
+        game.manager.load("ghoul.png", Texture.class);
+        game.manager.load("skeleton.jpg", Texture.class);
+        // Load the font
+        FileHandleResolver resolver = new InternalFileHandleResolver();
+        game.manager.setLoader(FreeTypeFontGenerator.class, new FreeTypeFontGeneratorLoader(resolver));
+        game.manager.setLoader(BitmapFont.class, ".ttf", new FreetypeFontLoader(resolver));
+        FreetypeFontLoader.FreeTypeFontLoaderParameter params = new FreetypeFontLoader.FreeTypeFontLoaderParameter();
+        params.fontParameters.size = 30;
+        params.fontFileName = "fonts/Satoshi-Variable.ttf";
+        game.manager.load("fonts/Satoshi-Variable.ttf", BitmapFont.class, params);
     }
 
     @Override
@@ -126,10 +142,17 @@ public class LoadingScreen extends AbstractScreen {
         // Show the loading screen
         stage.act();
         stage.getBatch().begin();
+
         // Update the progress bar
         if (game.manager.update()) { // Load some, will return true if done loading
             if(game.manager.isFinished()) { // If the screen is touched after the game is done loading, go to the main menu screen
-                game.setScreen(new MenuScreen(game));
+                var font = game.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
+                game.manager.get("uiskin.json", Skin.class).add("default-font",font );
+                this.player1 = new Player(true, game.manager);
+                this.player2 = new Player(false, game.manager);
+                player1.initializeDeck(stage);
+                player2.initializeDeck(stage);
+                game.setScreen(new PearPudding(game, game.manager, player1, player2));
             }
         }
 

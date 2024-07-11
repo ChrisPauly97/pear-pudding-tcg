@@ -8,9 +8,12 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.pear.pudding.MyGame;
 import com.pear.pudding.model.*;
 import com.pear.pudding.enums.Location;
+import com.pear.pudding.player.Hero;
 import com.pear.pudding.player.Player;
+import com.pear.pudding.screen.MenuScreen;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,13 +25,15 @@ public class PuddingInputProcessor implements InputProcessor {
     Map<Integer, Boolean> stateMap = new HashMap<>();
     Card draggingCard;
     private final Stage stage;
+    private final MyGame game;
     private final OrthographicCamera camera;
     private final Player player1;
     private final Player player2;
     private boolean deltaCalculated = false;
     Vector2 deltaVec = new Vector2();
 
-    public PuddingInputProcessor(Stage stage, Player player1, Player player2, OrthographicCamera camera) {
+    public PuddingInputProcessor(MyGame game, Stage stage, Player player1, Player player2, OrthographicCamera camera) {
+        this.game = game;
         this.stage = stage;
         this.camera = camera;
         this.player1 = player1;
@@ -120,12 +125,13 @@ public class PuddingInputProcessor implements InputProcessor {
             Board playerBoard = draggingCard.getPlayer().getBoard();
             Hand playerHand = draggingCard.getPlayer().getHand();
             Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
-
+            Hero enemyHero = player1.isMyTurn() ? player2.getHero() : player1.getHero();
             int boardTargetSlot = playerBoard.getIndexUnderMouse(coordinates);
             int handTargetSlot = playerHand.getIndexUnderMouse(coordinates);
             int enemyTargetSlot = enemyBoard.getIndexUnderMouse(coordinates);
-
+            boolean enemyHeroTargeted = enemyHero.contains(coordinates);
             if (boardTargetSlot >= 0) {
+                Gdx.app.log("Board", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
                 if (playerBoard.getCardAtIndex(boardTargetSlot) == null) {
                     if (playerBoard.onTheLeft(boardTargetSlot))
                         boardTargetSlot = playerBoard.nearestFreeSlotOnLeft(boardTargetSlot);
@@ -135,13 +141,24 @@ public class PuddingInputProcessor implements InputProcessor {
                     playerBoard.addCard(draggingCard, boardTargetSlot);
                 }
             } else if (handTargetSlot != -1) {
+                Gdx.app.log("Hand", draggingCard.getCurrentLocation() + " " + handTargetSlot);
                 if (playerHand.getCardAtIndex(handTargetSlot) == null) {
                     playerHand.addCard(draggingCard, playerHand.firstEmptySlot());
                 }
             } else if (enemyTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyTargetSlot) != null) {
+                Gdx.app.log("Enemy", draggingCard.getCurrentLocation() + " " + enemyTargetSlot);
                 draggingCard.fight(enemyBoard.getCardAtIndex(enemyTargetSlot));
                 resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+            } else if (enemyHeroTargeted) {
+                Gdx.app.log("Hero", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
+                boolean gameOver = draggingCard.fight(enemyHero);
+                if (gameOver) {
+                    game.setScreen(new MenuScreen(game));
+                }else {
+                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+                }
             } else {
+                Gdx.app.log("No target", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
                 resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
             }
 
@@ -152,18 +169,17 @@ public class PuddingInputProcessor implements InputProcessor {
         return false;
     }
 
-    public void resetToPreviousLocation(int boardTargetSlot, Board board, Hand hand){
+    public void resetToPreviousLocation(int boardTargetSlot, Board board, Hand hand) {
+        Gdx.app.log("Reset", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
         switch (draggingCard.getCurrentLocation()) {
             case BOARD:
-                if (boardTargetSlot == -1) {
-                    board.restoreSnapshot();
-                    if (board.getCardAtIndex(boardTargetSlot) == null) {
-                        if (board.onTheLeft(boardTargetSlot))
-                            boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
-                        else if (!board.onTheLeft(boardTargetSlot))
-                            boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
-                        board.addCard(this.draggingCard, boardTargetSlot);
-                    }
+                board.restoreSnapshot();
+                if (board.getCardAtIndex(boardTargetSlot) == null) {
+                    if (board.onTheLeft(boardTargetSlot))
+                        boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
+                    else if (!board.onTheLeft(boardTargetSlot))
+                        boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
+                    board.addCard(this.draggingCard, boardTargetSlot);
                 }
                 board.setPreviousTargetSlot(-1);
                 break;

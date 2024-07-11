@@ -14,6 +14,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.pear.pudding.enums.CardClass;
 import com.pear.pudding.enums.CardType;
 import com.pear.pudding.enums.Location;
+import com.pear.pudding.player.Hero;
 import com.pear.pudding.player.Player;
 import lombok.Getter;
 import lombok.Setter;
@@ -82,6 +83,21 @@ public class Card extends Actor {
         float maxY = getY() + getHeight();
 
         return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+    }
+
+    public boolean fight(Hero hero){
+        this.health -= hero.getAttack();
+        hero.health -= getAttack();
+        if (hero.health <= 0) {
+            return true;
+        }
+        if (this.health <= 0) {
+            moveToDiscardPile();
+        } else {
+            player.getBoard().restoreSnapshot();
+        }
+        return false;
+
     }
 
     public void fight(Card enemy) {

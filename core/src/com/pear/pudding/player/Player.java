@@ -28,7 +28,6 @@ import static com.pear.pudding.model.Constants.*;
 public class Player extends Actor {
     private Integer totalMana = 0;
     private Integer currentMana = 0;
-    private Integer health = 30;
     private boolean isMyTurn;
     private Hand hand;
     private DrawDeck drawDeck;
@@ -67,7 +66,6 @@ public class Player extends Actor {
             };
             card.setCurrentLocation(Location.DRAWDECK);
             this.drawDeck.addCard(card, i);
-            stage.addActor(card);
         }
         this.drawDeck.shuffle();
     }
@@ -89,10 +87,10 @@ public class Player extends Actor {
 
         font.getData().markupEnabled = true;
         font.getData().setScale(1f);
-        if (getHealth() <= 10) {
-            font.draw(batch, "[RED]" + this.getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
+        if (this.getHero().getHealth() <= 10) {
+            font.draw(batch, "[RED]" + this.getHero().getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
         } else {
-            font.draw(batch, "[GREEN]" + this.getHealth(), this.getHealthPosition().x - BUFFER * 3, this.getHealthPosition().y);
+            font.draw(batch, "[GREEN]" + this.getHero().getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
         }
         font.draw(batch, "[WHITE]" + this.getCurrentMana() + "/" + this.getTotalMana(), this.getHealthPosition().x + BUFFER * 3 / 2, this.getHealthPosition().y);
         getHero().draw(batch);

@@ -35,7 +35,8 @@ public class MenuScreen implements Screen {
         this.manager = game.manager;
         this.game = game;
         manager.finishLoading();
-        skin = manager.get("uiskin.json", Skin.class);
+        skin = manager.
+                get("uiskin.json", Skin.class);
         batch = new SpriteBatch();
         camera = new OrthographicCamera(WINDOW_WIDTH, WINDOW_HEIGHT);
         viewport = new FitViewport(WINDOW_WIDTH, WINDOW_HEIGHT, camera);
@@ -69,13 +70,13 @@ public class MenuScreen implements Screen {
         playButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                ((Game) Gdx.app.getApplicationListener()).setScreen(new PearPudding(game,manager));
+                game.setScreen(new GameLoadingScreen(game));
             }
         });
         optionsButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                ((Game) Gdx.app.getApplicationListener()).setScreen(new OptionsScreen(game));
+                game.setScreen(new OptionsScreen(game));
             }
         });
         exitButton.addListener(new ClickListener() {
