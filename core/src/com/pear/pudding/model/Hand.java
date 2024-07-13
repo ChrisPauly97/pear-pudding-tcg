@@ -35,7 +35,6 @@ public class Hand extends Deck {
             }
             this.previousTargetSlot = targetSlot;
         } else {
-            Gdx.app.log("previous target slot and target slot when target not on board", previousTargetSlot + ", " + targetSlot);
             if (this.previousTargetSlot != -1) {
                 restoreSnapshot();
                 rebalance(-1);

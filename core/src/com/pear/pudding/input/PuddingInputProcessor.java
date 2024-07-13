@@ -126,6 +126,7 @@ public class PuddingInputProcessor implements InputProcessor {
             Board playerBoard = draggingCard.getPlayer().getBoard();
             Hero playerHero = draggingCard.getPlayer().getHero();
             Hand playerHand = draggingCard.getPlayer().getHand();
+            Player activePlayer = player1.isMyTurn() ? player1: player2;
             Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
             Hero enemyHero = player1.isMyTurn() ? player2.getHero() : player1.getHero();
             Hand enemyHand = player1.isMyTurn() ? player2.getHand() : player1.getHand();
@@ -135,13 +136,14 @@ public class PuddingInputProcessor implements InputProcessor {
             boolean enemyHeroTargeted = enemyHero.contains(coordinates);
             if (boardTargetSlot != -1) {
                 Gdx.app.log("Board", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
-                if (playerBoard.getCardAtIndex(boardTargetSlot) == null) {
+                if (playerBoard.getCardAtIndex(boardTargetSlot) == null && activePlayer.hasEnoughMana(draggingCard)) {
                     if (playerBoard.onTheLeft(boardTargetSlot))
                         boardTargetSlot = playerBoard.nearestFreeSlotOnLeft(boardTargetSlot);
                     else
                         boardTargetSlot = playerBoard.nearestFreeSlotOnRight(boardTargetSlot);
 
                     playerBoard.addCard(draggingCard, boardTargetSlot);
+                    activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
                 }
             }
 //            else if (handTargetSlot != -1) {

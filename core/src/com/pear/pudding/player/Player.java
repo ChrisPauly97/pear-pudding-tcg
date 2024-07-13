@@ -88,11 +88,14 @@ public class Player extends Actor {
         font.getData().markupEnabled = true;
         font.getData().setScale(1f);
         if (this.getHero().getHealth() <= 10) {
-            font.draw(batch, "[RED]" + this.getHero().getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
+            font.draw(batch, "[RED]" + this.getHero().getHealth(), this.getHealthPosition().x- BUFFER * 3, this.getHealthPosition().y);
         } else {
-            font.draw(batch, "[GREEN]" + this.getHero().getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
+            font.draw(batch, "[GREEN]" + this.getHero().getHealth(), this.getHealthPosition().x - BUFFER * 3, this.getHealthPosition().y);
         }
         font.draw(batch, "[WHITE]" + this.getCurrentMana() + "/" + this.getTotalMana(), this.getHealthPosition().x + BUFFER * 3 / 2, this.getHealthPosition().y);
+        for(int i = 0; i < currentMana; i++){
+            font.draw(batch, "[BLUE] 1", WINDOW_WIDTH - CARD_WIDTH*2 + (BUFFER * i) , this.getHealthPosition().y);
+        }
         getHero().draw(batch);
         getDrawDeck().draw(batch);
         getBoard().draw(batch);
