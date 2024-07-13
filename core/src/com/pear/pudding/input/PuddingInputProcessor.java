@@ -144,6 +144,8 @@ public class PuddingInputProcessor implements InputProcessor {
 
                     playerBoard.addCard(draggingCard, boardTargetSlot);
                     activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
+                }else{
+                    this.draggingCard.resetToPreviousLocation();
                 }
             }
 //            else if (handTargetSlot != -1) {
@@ -202,7 +204,9 @@ public class PuddingInputProcessor implements InputProcessor {
             }
             this.draggingCard.move(mouseCoords.x - this.deltaVec.x, mouseCoords.y - this.deltaVec.y, this.draggingCard.getCurrentLocation());
             Board myBoard = this.draggingCard.getPlayer().getBoard();
-            myBoard.handleHover(mouseCoords);
+            if(this.draggingCard.getPlayer().hasEnoughMana(this.draggingCard)){
+                myBoard.handleHover(mouseCoords);
+            }
             Hand myHand = this.draggingCard.getPlayer().getHand();
             myHand.handleHover(mouseCoords);
             stage.getBatch().begin();

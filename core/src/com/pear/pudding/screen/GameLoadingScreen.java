@@ -87,10 +87,13 @@ public class GameLoadingScreen extends AbstractScreen {
         game.manager.load("background.png", Texture.class);
         game.manager.load("card.png", Texture.class);
         game.manager.load("cardback.jpg", Texture.class);
+        game.manager.load("card.png", Texture.class);
+        game.manager.load("cardback.jpg", Texture.class);
         game.manager.load("default.png", Texture.class);
         game.manager.load("ghost.png", Texture.class);
         game.manager.load("ghoul.png", Texture.class);
         game.manager.load("skeleton.jpg", Texture.class);
+        game.manager.load("card-can-play.png", Texture.class);
         // Load the font
         FileHandleResolver resolver = new InternalFileHandleResolver();
         game.manager.setLoader(FreeTypeFontGenerator.class, new FreeTypeFontGeneratorLoader(resolver));

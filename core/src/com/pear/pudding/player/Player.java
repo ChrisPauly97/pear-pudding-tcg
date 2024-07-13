@@ -94,7 +94,7 @@ public class Player extends Actor {
         }
         font.draw(batch, "[WHITE]" + this.getCurrentMana() + "/" + this.getTotalMana(), this.getHealthPosition().x + BUFFER * 3 / 2, this.getHealthPosition().y);
         for(int i = 0; i < currentMana; i++){
-            font.draw(batch, "[BLUE] 1", WINDOW_WIDTH - CARD_WIDTH*2 + (BUFFER * i) , this.getHealthPosition().y);
+            font.draw(batch, "[BLUE] *", WINDOW_WIDTH - CARD_WIDTH*2 + (BUFFER * i) , this.getHealthPosition().y);
         }
         getHero().draw(batch);
         getDrawDeck().draw(batch);

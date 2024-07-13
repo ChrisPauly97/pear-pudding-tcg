@@ -13,7 +13,7 @@ import static com.pear.pudding.enums.CardType.MINION;
 
 public class Skeleton extends Card {
     public Skeleton(float x, float y, float width, float height, Color color, Player player) {
-        super(x, y, width, height, color, 1, 3, 1, MINION, UNDEAD, StatusEffects.effects.get("Default"), player);
+        super(x, y, width, height, color, 1, 3, 1, MINION, UNDEAD,new StatusEffect("", EffectTrigger.NONE, EffectType.NONE, 0), player);
         Texture texture = new Texture(Gdx.files.internal("skeleton.jpg"));
         var image = new Image(texture);
         image.setBounds(x,y + height/2,width,height /2);
