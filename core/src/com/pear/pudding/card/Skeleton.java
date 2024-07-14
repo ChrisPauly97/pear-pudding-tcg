@@ -5,7 +5,6 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.pear.pudding.model.Card;
-import com.pear.pudding.model.Slot;
 import com.pear.pudding.player.Player;
 
 import static com.pear.pudding.enums.CardClass.UNDEAD;

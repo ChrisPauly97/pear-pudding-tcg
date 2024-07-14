@@ -7,10 +7,12 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.Sprite;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
+import com.pear.pudding.card.EffectTrigger;
 import com.pear.pudding.card.StatusEffect;
 import com.pear.pudding.card.StatusEffects;
 import com.pear.pudding.enums.CardClass;
@@ -57,6 +59,19 @@ public class Card extends Actor {
     private AssetManager manager;
     private Location currentLocation;
 
+    // TODO set a min health of 0 for every unit to they can't go above it when getting healed
+    public void takeDamage(int damage){
+        health -= damage;
+        if( health <= 0){
+            health = 0;
+            this.moveToDiscardPile();
+        }
+    }
+
+    // TODO set a max health for every unit to they can't go above it when getting healed
+    public void getHealing(int healing){
+        health += healing;
+    }
 
     public Card(float x, float y, float width, float height, Color color, Integer cost, Integer attack, Integer health,
                 CardType type, CardClass cardClass, StatusEffect statusEffect, Player player) {
@@ -82,6 +97,23 @@ public class Card extends Actor {
         image.setBounds(x, y, width, height);
     }
 
+    public boolean handleSummonEffect(){
+        if(statusEffect.getEffectTrigger().equals(EffectTrigger.SUMMON)){
+          switch (statusEffect.getEffectType()){
+            case HEAL:
+              health += statusEffect.getValue();
+              break;
+            case DAMAGE:
+              return true;
+            case REMOVE:
+              return true;
+            default:
+              return false;
+          }
+        }
+        return false;
+    }
+
     public boolean contains(Vector3 point) {
         float minX = getX();
         float minY = getY();
@@ -91,21 +123,27 @@ public class Card extends Actor {
         return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
     }
 
-    public boolean triggerEffect(Card card, Card enemyCard) {
-        switch (card.getStatusEffect().getEffectType()) {
-            case HEAL:
-                card.health += card.getStatusEffect().getValue();
-                break;
-            case DAMAGE:
-                enemyCard.health -= card.getStatusEffect().getValue();
-                break;
-            case REMOVE:
-                enemyCard.setOutOfPlay(card.getStatusEffect().getValue());
-                break;
-            default:
-                return false;
+    public boolean triggerAttackEffect(Card card, Card enemyCard) {
+        if (statusEffect.getEffectTrigger().equals(EffectTrigger.FIGHT)) {
+            switch (card.getStatusEffect().getEffectType()) {
+                case HEAL:
+                    card.health += card.getStatusEffect().getValue();
+                    break;
+                case DAMAGE:
+                    enemyCard.health -= card.getStatusEffect().getValue();
+                    break;
+                case REMOVE:
+                    enemyCard.setOutOfPlay(card.getStatusEffect().getValue());
+                    break;
+                default:
+                    return false;
+            }
         }
         return false;
+    }
+
+    public void handleRemoveEffect(int value) {
+      this.outOfPlay = value;
     }
 
     public boolean fight(Hero hero) {
@@ -145,7 +183,6 @@ public class Card extends Actor {
     }
 
     public void fight(Card enemy) {
-        this.triggerEffect(this, enemy);
         if (enemy.health <= 0) {
             enemy.moveToDiscardPile();
         } else {
@@ -184,15 +221,11 @@ public class Card extends Actor {
     public void zoom() {
         if (this.image != null) {
             setBounds(getStage().getWidth() / 2, getStage().getHeight() / 2, getWidth() * 3, getHeight() * 3);
-            Bound b = imagePos(getX(), getY(), getWidth(), getHeight());
             this.cardBackground.setBounds(getStage().getWidth() / 2, getStage().getHeight() / 2, this.cardBackground.getWidth() * 3, this.cardBackground.getHeight() * 3);
-            this.image.setBounds(b.getX(), b.getY(), b.getW(), b.getH());
+            this.image.setBounds(getX(), getY(), getWidth(), getHeight());
         }
     }
 
-    public Bound imagePos(float cardX, float cardY, float cardW, float cardH) {
-        return new Bound(cardX, cardY + cardH / 2, cardW, cardH / 2);
-    }
 //
 //    public void reverseZoom() {
 //        if (this.image != null) {
@@ -228,8 +261,7 @@ public class Card extends Actor {
         this.cardBackground.setBounds(x, y, w, h);
         this.cardCanPlayBackground.setPosition(x, y);
         if (getImage() != null) {
-            var bound = imagePos(x, y, w, h);
-            this.image.setBounds(bound.getX(), bound.getY(), bound.getW(), bound.getH());
+            this.image.setBounds(getX(), getY(), getWidth(), getHeight());
         }
     }
 
