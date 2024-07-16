@@ -62,10 +62,6 @@ public class Card extends Actor {
     // TODO set a min health of 0 for every unit to they can't go above it when getting healed
     public void takeDamage(int damage){
         health -= damage;
-        if( health <= 0){
-            health = 0;
-            this.moveToDiscardPile();
-        }
     }
 
     // TODO set a max health for every unit to they can't go above it when getting healed
@@ -73,6 +69,9 @@ public class Card extends Actor {
         health += healing;
     }
 
+    public void handleDiscard(){
+
+    }
     public Card(float x, float y, float width, float height, Color color, Integer cost, Integer attack, Integer health,
                 CardType type, CardClass cardClass, StatusEffect statusEffect, Player player) {
         setManager(player.getManager());
@@ -161,6 +160,14 @@ public class Card extends Actor {
 
     }
 
+    public void checkDiscard(){
+        if (this.health <= 0) {
+            moveToDiscardPile();
+        } else {
+            player.getBoard().restoreSnapshot();
+        }
+    }
+
     public void resetToPreviousLocation() {
         Gdx.app.log("Reset", this.getCurrentLocation().toString());
         var board = getPlayer().getBoard();
@@ -211,10 +218,15 @@ public class Card extends Actor {
         switch (currentLocation) {
             case BOARD:
                 this.player.getBoard().removeCard(this);
+                break;
             case HAND:
                 this.player.getHand().removeCard(this);
+                break;
         }
         this.move(myDiscardPile.getSlotPositionAtIndex(0).x, myDiscardPile.getSlotPositionAtIndex(0).y, DISCARD);
+        getStage().getBatch().begin();
+        this.draw(getStage().getBatch(), 1f);
+        getStage().getBatch().end();
     }
 
 
