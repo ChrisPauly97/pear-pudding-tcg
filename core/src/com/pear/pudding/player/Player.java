@@ -46,7 +46,7 @@ public class Player extends Actor {
         this.drawDeck = new DrawDeck(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER : WINDOW_HEIGHT - BUFFER - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT);
         this.healthPosition = new Vector2(WINDOW_WIDTH / 2, isPlayer1 ? BUFFER * 3 + CARD_HEIGHT : WINDOW_HEIGHT - CARD_HEIGHT - BUFFER);
         this.discardPile = new DiscardPile(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER * 2 + CARD_HEIGHT : WINDOW_HEIGHT - BUFFER * 2 - CARD_HEIGHT * 2, CARD_WIDTH, CARD_HEIGHT);
-        Texture heroTexture = manager.get("ghost.png", Texture.class);
+        Texture heroTexture = manager.get("ghostnew.png", Texture.class);
         Texture hero2Texture = manager.get("ghoul.png", Texture.class);
         hero = new Hero(isPlayer1 ? heroTexture : hero2Texture, WINDOW_WIDTH / 2, isPlayer1 ? (CARD_HEIGHT * 2) - BUFFER * 2 : WINDOW_HEIGHT - (CARD_HEIGHT * 2) + BUFFER * 2, isPlayer1 ? 0 : 180);
         if (!isPlayer1) {

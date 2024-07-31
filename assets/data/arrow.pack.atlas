@@ -1,100 +1,89 @@
-
 arrow.pack.png
-size: 1024,1024
+size: 1920, 1920
 format: RGBA8888
-filter: Nearest,Nearest
+filter: Linear,Linear
 repeat: none
 SummonEffectArrow
   rotate: false
-  xy: 2, 484
+  xy: 0, 0
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
   index: 0
 SummonEffectArrow
   rotate: false
-  xy: 2, 2
+  xy: 640, 0
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
   index: 1
-
-arrow.pack2.png
-size: 1024,1024
-format: RGBA8888
-filter: Nearest,Nearest
-repeat: none
 SummonEffectArrow
   rotate: false
-  xy: 2, 484
+  xy: 1280, 0
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
   index: 2
 SummonEffectArrow
   rotate: false
-  xy: 2, 2
+  xy: 0, 480
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
   index: 3
-
-arrow.pack3.png
-size: 1024,1024
-format: RGBA8888
-filter: Nearest,Nearest
-repeat: none
 SummonEffectArrow
   rotate: false
-  xy: 2, 484
+  xy: 640, 480
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
   index: 4
 SummonEffectArrow
   rotate: false
-  xy: 2, 2
+  xy: 1280, 480
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
   index: 5
-
-arrow.pack4.png
-size: 1024,1024
-format: RGBA8888
-filter: Nearest,Nearest
-repeat: none
 SummonEffectArrow
   rotate: false
-  xy: 2, 484
+  xy: 0, 960
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
-  index: 6
+  index: 12
 SummonEffectArrow
   rotate: false
-  xy: 2, 2
+  xy: 640, 960
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
-  index: 7
-
-arrow.pack5.png
-size: 1024,1024
-format: RGBA8888
-filter: Nearest,Nearest
-repeat: none
+  index: 13
 SummonEffectArrow
   rotate: false
-  xy: 2, 484
+  xy: 1280, 960
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
-  index: 8
+  index: 14
 SummonEffectArrow
   rotate: false
-  xy: 2, 2
+  xy: 0, 1440
   size: 640, 480
   orig: 640, 480
   offset: 0, 0
-  index: 9
+  index: 15
+SummonEffectArrow
+  rotate: false
+  xy: 640, 1440
+  size: 640, 480
+  orig: 640, 480
+  offset: 0, 0
+  index: 16
+SummonEffectArrow
+  rotate: false
+  xy: 1280, 1440
+  size: 640, 480
+  orig: 640, 480
+  offset: 0, 0
+  index: 17

@@ -92,7 +92,7 @@ public class Card extends Actor {
         cardBackground.setBounds(x, y, width, height);
         cardCanPlayBackground = new Image(manager.get("card-can-play.png", Texture.class));
         cardCanPlayBackground.setBounds(x, y, width, height);
-        image = new Image(manager.get("ghost.png", Texture.class));
+        image = new Image(manager.get("ghostnew.png", Texture.class));
         image.setBounds(x, y, width, height);
     }
 
