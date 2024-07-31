@@ -55,6 +55,7 @@ project(":desktop") {
         api "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
         api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
         compileOnly 'org.projectlombok:lombok:1.18.32'
+        implementation group: 'org.yaml', name: 'snakeyaml', version: '2.2'
         annotationProcessor 'org.projectlombok:lombok:1.18.32'
         api "com.badlogicgames.gdx:gdx-freetype-platform:$gdxVersion:natives-desktop"
         api 'com.badlogicgames.gdx:gdx-tools:1.5.4'
@@ -113,6 +114,7 @@ project(":core") {
         api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
         api 'org.junit.jupiter:junit-jupiter:5.7.1'
         api 'org.mockito:mockito-core:4.2.0'
+        implementation group: 'org.yaml', name: 'snakeyaml', version: '2.2'
         testImplementation 'org.junit.jupiter:junit-jupiter:5.7.1'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
         testImplementation 'org.mockito:mockito-core:4.2.0'

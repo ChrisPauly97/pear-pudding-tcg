@@ -11,15 +11,16 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.pear.pudding.card.*;
+import com.pear.pudding.config.CardProperties;
 import com.pear.pudding.enums.Location;
 import com.pear.pudding.model.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
+import static com.pear.pudding.config.CardProperties.cardProps;
+import static com.pear.pudding.config.CardProperties.loadYml;
 import static com.pear.pudding.enums.Location.HAND;
 import static com.pear.pudding.model.Constants.*;
 
@@ -55,15 +56,12 @@ public class Player extends Actor {
     }
 
     public void initializeDeck(Stage stage) {
+        List<Card> cardProps = loadYml().getCards();
         Card card;
         for (int i = 0; i < drawDeck.getCards().length; i++) {
             Vector3 slotPos = drawDeck.getSlotPositionAtIndex(1);
-            card = switch (i) {
-                case 0, 3 -> new Ghost(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                case 1, 4 -> new Skeleton(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                case 2, 5 -> new Zombie(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                default -> new Ghoul(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-            };
+            card = cardProps.get(i);
+            card.setPosition(slotPos.x, slotPos.y);
             card.setCurrentLocation(Location.DRAWDECK);
             this.drawDeck.addCard(card, i);
         }

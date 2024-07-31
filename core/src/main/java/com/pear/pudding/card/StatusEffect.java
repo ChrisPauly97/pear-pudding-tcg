@@ -1,15 +1,22 @@
 package com.pear.pudding.card;
 
+import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 public class StatusEffect {
-    String cardText;
-    EffectTrigger effectTrigger;
-    EffectType effectType;
-    int value;
+    private String cardText;
+    private EffectTrigger effectTrigger;
+    private EffectType effectType;
+    private int value;
+
+    public StatusEffect(String cardText) {
+        this.cardText = cardText;
+    }
 
     public StatusEffect(String cardText, EffectTrigger trigger, EffectType effectType, int value) {
         this.cardText = cardText;

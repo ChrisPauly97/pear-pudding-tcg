@@ -18,9 +18,16 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.MyGame;
+import com.pear.pudding.config.CardProperties;
 import com.pear.pudding.loading.LoadingBar;
+import com.pear.pudding.model.Card;
+import com.pear.pudding.model.CardPropList;
 import com.pear.pudding.player.Player;
 
+import java.util.List;
+import java.util.Map;
+
+import static com.pear.pudding.config.CardProperties.loadYml;
 import static java.lang.Thread.sleep;
 
 /**
@@ -149,6 +156,7 @@ public class GameLoadingScreen extends AbstractScreen {
         // Update the progress bar
         if (game.manager.update()) { // Load some, will return true if done loading
             if(game.manager.isFinished()) { // If the screen is touched after the game is done loading, go to the main menu screen
+                CardPropList cards = loadYml();
                 var font = game.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
                 game.manager.get("uiskin.json", Skin.class).add("default-font",font );
                 this.player1 = new Player(true, game.manager);

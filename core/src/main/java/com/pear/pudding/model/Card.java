@@ -20,16 +20,17 @@ import com.pear.pudding.enums.CardType;
 import com.pear.pudding.enums.Location;
 import com.pear.pudding.player.Hero;
 import com.pear.pudding.player.Player;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import static com.pear.pudding.enums.Location.*;
 import static com.pear.pudding.model.Constants.BUFFER;
 import static com.pear.pudding.model.Constants.TEXT_BUFFER;
 
-@Getter
-@Setter
+@EqualsAndHashCode(callSuper = true)
+@Data
+@NoArgsConstructor
 public class Card extends Actor {
+    private String name;
     private Image image;
     private Image cardBack;
     private Image cardBackground;
@@ -72,6 +73,7 @@ public class Card extends Actor {
     public void handleDiscard(){
 
     }
+
     public Card(float x, float y, float width, float height, Color color, Integer cost, Integer attack, Integer health,
                 CardType type, CardClass cardClass, StatusEffect statusEffect, Player player) {
         setManager(player.getManager());

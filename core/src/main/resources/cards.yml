@@ -1,0 +1,45 @@
+cards:
+  - name: Ghoul
+    health: 1
+    attack: 2
+    cost: 1
+    statusEffect:
+      cardText:  'Remove a minion from the board for two turns'
+      effectTrigger: SUMMON
+      effectType: REMOVE
+      value: 2
+    cardType: MINION
+    cardClass: ETHEREAL
+  - name: Ghost
+    health: 2
+    attack: 1
+    cost: 1
+    statusEffect:
+      cardText:  'Remove a minion from the board for two turns'
+      effectTrigger: SUMMON
+      effectType: REMOVE
+      value: 2
+    cardType: MINION
+    cardClass: ETHEREAL
+  - name: Troll
+    health:
+    attack:
+    cost:
+    statusEffect:
+      cardText:  'Remove a minion from the board for two turns'
+      effectTrigger: SUMMON
+      effectType: REMOVE
+      value: 2
+    cardType:
+    cardClass:
+  - name: Werewolf
+    health:
+    attack:
+    cost:
+    statusEffect:
+      cardText:  'Remove a minion from the board for two turns'
+      effectTrigger: SUMMON
+      effectType: REMOVE
+      value: 2
+    cardType:
+    cardClass:

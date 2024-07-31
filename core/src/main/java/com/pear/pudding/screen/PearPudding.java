@@ -19,6 +19,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.MyGame;
+import com.pear.pudding.config.CardProperties;
 import com.pear.pudding.enums.Location;
 import com.pear.pudding.input.EndTurnClickListener;
 import com.pear.pudding.model.Board;
@@ -58,10 +59,11 @@ public class PearPudding implements Screen, InputProcessor{
     private boolean deltaCalculated = false;
     Vector2 deltaVec = new Vector2();
     Animation<TextureRegion> currentAnimation;
-
+    CardProperties props = new CardProperties();
 
     public PearPudding(MyGame game, AssetManager manager, Player player1, Player player2) {
         try {
+
             this.manager = manager;
             this.player1 = player1;
             this.player2 = player2;
@@ -424,7 +426,7 @@ public class PearPudding implements Screen, InputProcessor{
             myBoard.draw(stage.getBatch());
             myHand.draw(stage.getBatch());
             TextureRegion currentFrame = runningAnimation.getKeyFrame(stateTime, true);
-            stage.getBatch().draw(currentFrame , mouseCoords.x, mouseCoords.y);
+            stage.getBatch().draw(currentFrame , this.draggingCard.getImage().getImageX(), this.draggingCard.getImage().getImageY());
             stage.getBatch().end();
         }
 
