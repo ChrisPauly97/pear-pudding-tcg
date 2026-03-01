@@ -1,7 +1,1 @@
-android { 
-    packagingOptions { 
-        exclude 'META-INF/LICENSE' 
-        pickFirst 'META-INF/AL2.0' 
-        pickFirst 'META-INF/LGPL2.1' 
-    }
-}
+apply plugin: 'com.android.application'\n\n// Other existing content of the build.gradle file\n\nandroid {\n    // Other configurations...\n    packagingOptions {\n        // Your packaging options here...\n    }\n}
