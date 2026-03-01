@@ -27,12 +27,12 @@ android {
             res.srcDirs = ['src/main/res']
         }
     }
-}
 
-packagingOptions {
-    exclude 'META-INF/LICENSE.md'
-    exclude 'META-INF/LICENSE'
-    exclude 'META-INF/NOTICE'
+    packagingOptions {
+        exclude 'META-INF/LICENSE.md'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/NOTICE'
+    }
 }
 
 dependencies {
