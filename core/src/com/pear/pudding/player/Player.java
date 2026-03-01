@@ -75,9 +75,11 @@ public class Player extends Actor {
     public void refreshBoard() {
         for (Card c : getBoard().getCards()) {
             if (c != null) {
-                c.setOutOfPlay(c.getOutOfPlay() + 1);
-                if(c.getOutOfPlay() == 0){
-                    c.setFaceUp(true);
+                if (c.getOutOfPlay() < 0) {
+                    c.setOutOfPlay(c.getOutOfPlay() + 1);
+                    if (c.getOutOfPlay() == 0) {
+                        c.setFaceUp(true);
+                    }
                 }
                 c.setAttackCount(1);
                 c.setSummoningSick(false);

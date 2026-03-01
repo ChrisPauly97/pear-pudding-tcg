@@ -45,7 +45,10 @@ public class Hand extends Deck {
 
     public void rebalance(int targetSlot) {
         if (targetSlot == -1) {
-            shiftLeft(0, cards.length - 1);
+            // Repeat shiftLeft passes until all cards are packed to the left
+            for (int pass = 0; pass < cards.length - 1; pass++) {
+                shiftLeft(0, cards.length - 1);
+            }
         } else {
             var nearestFreeSlotFromLeft = firstEmptySlot();
             if (targetSlot > nearestFreeSlotFromLeft) {

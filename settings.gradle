@@ -1,1 +1,9 @@
-include 'desktop', 'ios', 'html', 'core', 'android'
+include 'desktop', 'html', 'core'
+
+def androidSdkAvailable = System.getenv('ANDROID_HOME') != null ||
+        new File(System.getProperty('user.home') + '/Android/Sdk').exists() ||
+        new File(System.getProperty('user.home') + '/android-sdk').exists()
+
+if (androidSdkAvailable) {
+    include 'android', 'ios'
+}

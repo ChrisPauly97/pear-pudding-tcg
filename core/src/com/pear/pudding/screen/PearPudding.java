@@ -41,8 +41,6 @@ import static com.pear.pudding.model.Constants.*;
 
 
 // TODO implement menu screen
-// TODO implement game over
-// TODO implement game win
 // TODO implement card ability
 // TODO fix font resolution
 public class PearPudding implements Screen, InputProcessor{
@@ -54,6 +52,7 @@ public class PearPudding implements Screen, InputProcessor{
     Button backButton;
     Button endTurnButton;
     BasicAI ai;
+    MyGame game;
 
     // AI turn timing constants
     private static final float AI_PLAY_CARDS_DELAY = 0.5f;
@@ -69,6 +68,7 @@ public class PearPudding implements Screen, InputProcessor{
 
     public PearPudding(MyGame game, AssetManager manager, Player player1, Player player2) {
         try {
+            this.game = game;
             this.manager = manager;
             this.player1 = player1;
             this.player2 = player2;
@@ -158,14 +158,20 @@ public class PearPudding implements Screen, InputProcessor{
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
-                ai.attackWithMinions();
+                boolean gameOver = ai.attackWithMinions();
+                if (gameOver) {
+                    game.setScreen(new GameOverScreen(game));
+                }
             }
         }, AI_PLAY_CARDS_DELAY + AI_ATTACK_DELAY);
 
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
-                endAITurn();
+                // Only end AI turn if the game is still running (player hero still alive)
+                if (player1.getHero().getHealth() > 0) {
+                    endAITurn();
+                }
             }
         }, AI_PLAY_CARDS_DELAY + AI_ATTACK_DELAY + AI_END_TURN_DELAY);
     }
@@ -311,7 +317,11 @@ public class PearPudding implements Screen, InputProcessor{
     }
 
     public void handleHitCard(Card card) {
-        if (card.getCurrentLocation() == Location.BOARD || card.getCurrentLocation() == Location.HAND) {
+        Location loc = card.getCurrentLocation();
+        // Hand cards can always be picked up (returned to hand if can't afford)
+        // Board cards can only be dragged if they can attack this turn
+        boolean canDrag = loc == Location.HAND || (loc == Location.BOARD && card.canAttack());
+        if (canDrag) {
             card.getPlayer().getBoard().removeCard(card);
             card.getPlayer().getHand().removeCard(card);
             card.getPlayer().getBoard().snapShot();
@@ -369,20 +379,27 @@ public class PearPudding implements Screen, InputProcessor{
                 // If a summon effect triggered or if we are dragging from hand to board, play the card
                 if (effectTriggered || (draggingCard.getStatusEffect().getEffectTrigger().equals(NONE) && boardTargetSlot != -1)) {
                     playerBoard.addCard(draggingCard);
+                    // Card just summoned — cannot attack until the next turn
+                    draggingCard.setSummoningSick(true);
                     activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
                 } else {
                     draggingCard.resetToPreviousLocation();
                 }
-            } else if (draggingCard.getAttackCount() > 0 && draggingCard.getCurrentLocation() == BOARD) {
+            } else if (draggingCard.canAttack()) {
                 if (enemyBoardTargetSlot != -1) { // Target Enemy Board
                     var enemyCard = enemyBoard.getCardAtIndex(enemyBoardTargetSlot);
-                    if(enemyCard != null){
+                    if (enemyCard != null) {
                         draggingCard.fight(enemyCard);
                     }
                 } else if (enemyHeroTargeted) { // Target Enemy Hero
-                    draggingCard.fight(enemyHero);
+                    boolean gameOver = draggingCard.fight(enemyHero);
+                    if (gameOver) {
+                        draggingCard = null;
+                        game.setScreen(new GameOverScreen(game));
+                        return true;
+                    }
                 }
-                draggingCard.resetToPreviousLocation();
+                // resetToPreviousLocation below (line 437) handles returning the card to the board
             }
 
             // Check if our card has an effect to trigger
