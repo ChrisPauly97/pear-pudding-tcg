@@ -165,14 +165,14 @@ public class Card extends Actor {
         this.attackCount--;
         this.health -= hero.getAttack();
         hero.health -= getAttack();
-        if (hero.health <= 0) {
-            return true;
-        }
+        // Check card death FIRST so it's always handled, even if hero also dies simultaneously
         if (this.health <= 0) {
             moveToDiscardPile();
         }
+        if (hero.health <= 0) {
+            return true;
+        }
         return false;
-
     }
 
     public void checkDiscard(){
@@ -191,16 +191,28 @@ public class Card extends Actor {
             case BOARD:
                 board.restoreSnapshot();
                 hand.restoreSnapshot();
-                var nearestFreeSlot = board.nearestFreeSlot();
-                board.addCard(this, nearestFreeSlot);
+                int nearestFreeSlot = board.nearestFreeSlot();
+                if (nearestFreeSlot != -1) {
+                    board.addCard(this, nearestFreeSlot);
+                } else {
+                    // Board is full — prevent limbo by sending to discard
+                    moveToDiscardPile();
+                }
                 board.setPreviousTargetSlot(-1);
                 break;
             case HAND:
                 hand.restoreSnapshot();
                 board.restoreSnapshot();
-                hand.addCard(this, hand.firstEmptySlot());
+                int emptySlot = hand.firstEmptySlot();
+                if (emptySlot != -1) {
+                    hand.addCard(this, emptySlot);
+                }
                 hand.rebalance(-1);
                 hand.setPreviousTargetSlot(-1);
+                break;
+            case DISCARD:
+                // Card died during combat — already in discard, nothing to do
+                break;
         }
     }
 
@@ -221,8 +233,16 @@ public class Card extends Actor {
 //
 
     public void moveToDiscardPile() {
+        // Already discarded — nothing to do
+        if (currentLocation == DISCARD) {
+            return;
+        }
+
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
+        if (emptyDiscardSlot == -1) {
+            return; // Discard pile full — prevent limbo by leaving card in place
+        }
 
         // Use atomic move
         Deck sourceDeck = null;
