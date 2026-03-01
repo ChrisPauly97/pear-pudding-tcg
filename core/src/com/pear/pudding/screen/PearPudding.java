@@ -25,6 +25,7 @@ import com.pear.pudding.enums.Location;
 import com.pear.pudding.input.EndTurnClickListener;
 import com.pear.pudding.model.Board;
 import com.pear.pudding.model.Card;
+import com.pear.pudding.model.Deck;
 import com.pear.pudding.model.Hand;
 import com.pear.pudding.player.Hero;
 import com.pear.pudding.player.Player;
@@ -318,153 +319,109 @@ public class PearPudding implements Screen, InputProcessor{
 
     public void handleHitCard(Card card) {
         Location loc = card.getCurrentLocation();
-        // Hand cards can always be picked up (returned to hand if can't afford)
-        // Board cards can only be dragged if they can attack this turn
-        boolean canDrag = loc == Location.HAND || (loc == Location.BOARD && card.canAttack());
-        if (canDrag) {
-            card.getPlayer().getBoard().removeCard(card);
-            card.getPlayer().getHand().removeCard(card);
-            card.getPlayer().getBoard().snapShot();
+        if (loc == Location.BOARD) {
+            // Snapshot hand so it can be restored if hover shifted it during drag
             card.getPlayer().getHand().snapShot();
+            card.getPlayer().getBoard().startDragging(card);
+            this.draggingCard = card;
+        } else if (loc == Location.HAND) {
+            // Snapshot board so it can be restored if hover shifted it during drag
+            card.getPlayer().getBoard().snapShot();
+            card.getPlayer().getHand().startDragging(card);
             this.draggingCard = card;
         }
     }
-    // Cases to handle
-    // 1: Targeting my board and has no summon effect
-    //      - If I have enough mana, I can add the card to my board
-    //      - If I don't have enough mana, return card to hand
-    // 2. Targeting my board and has a summon effect
-    //      - Return the card to previous location since the summon effect should be applied
-    // 3. Targeting enemy board and has a summon effect
-    //      - If there is a card in that slot trigger the summon effect and play the card in the frst slot nearest corresponding to the positon on the enemy board
-    // 4. Targeting enemy board and has no summon effect
-    //      - Return to previous location
-    // 5. Targeting enemy hero and has no summon effect
-    //      - Return to previous location
-    // 6. Targeting enemy hero and has summon effect
-    //      - Resolve summon effect
-
-
     public boolean touchUp(int x, int y, int pointer, int button) {
         Vector3 coordinates = camera.unproject(new Vector3(x, y, camera.position.z));
-        if (draggingCard != null) {
-            Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
-            Hero enemyHero = player1.isMyTurn() ? player2.getHero() : player1.getHero();
-            Hand enemyHand = player1.isMyTurn() ? player2.getHand() : player1.getHand();
+        if (draggingCard == null) return false;
 
-            Board playerBoard = draggingCard.getPlayer().getBoard();
-            Hero playerHero = draggingCard.getPlayer().getHero();
-            Hand playerHand = draggingCard.getPlayer().getHand();
+        Board playerBoard = draggingCard.getPlayer().getBoard();
+        Hand playerHand = draggingCard.getPlayer().getHand();
+        Hero playerHero = draggingCard.getPlayer().getHero();
+        Player activePlayer = draggingCard.getPlayer();
+        Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
+        Hero enemyHero = player1.isMyTurn() ? player2.getHero() : player1.getHero();
 
-            Player activePlayer = draggingCard.getPlayer();
+        // Source deck is where the card came from (determined before drag started)
+        Deck sourceDeck = draggingCard.getCurrentLocation() == BOARD ? playerBoard : playerHand;
 
-            int boardTargetSlot = playerBoard.getIndexUnderMouse(coordinates);
-            int enemyBoardTargetSlot = enemyBoard.getIndexUnderMouse(coordinates);
+        int boardTargetSlot = playerBoard.getIndexUnderMouse(coordinates);
+        int enemyBoardTargetSlot = enemyBoard.getIndexUnderMouse(coordinates);
+        boolean enemyHeroTargeted = enemyHero.contains(coordinates);
 
-            boolean enemyHeroTargeted = enemyHero.contains(coordinates);
-            boolean playerHeroTargeted = playerHero.contains(coordinates);
+        boolean cardPlaced = false;
+
+        if (draggingCard.getCurrentLocation() == HAND && activePlayer.hasEnoughMana(draggingCard)) {
+            // --- Playing a card from hand ---
             boolean effectTriggered = false;
-
-            // Check if we have enough mana to play the minion and also check if the minion is not summoned yet.
-            if (activePlayer.hasEnoughMana(draggingCard) && draggingCard.getCurrentLocation() == HAND) {
-                if (boardTargetSlot != -1) { // Target My Board
-                    effectTriggered = playerBoard.handleEffect(boardTargetSlot, draggingCard);
-                } else if (enemyBoardTargetSlot != -1) { // Target Enemy Board
-                    effectTriggered = enemyBoard.handleEffect(enemyBoardTargetSlot, draggingCard);
-                } else if (enemyHeroTargeted) { // Target Enemy Hero
-                    effectTriggered = enemyHero.handleEffect(draggingCard);
-                } else if (playerHeroTargeted) { // Target Player Hero
-                    effectTriggered = playerHero.handleEffect(draggingCard);
-                }
-                // If a summon effect triggered or if we are dragging from hand to board, play the card
-                if (effectTriggered || (draggingCard.getStatusEffect().getEffectTrigger().equals(NONE) && boardTargetSlot != -1)) {
-                    playerBoard.addCard(draggingCard);
-                    // Card just summoned — cannot attack until the next turn
-                    draggingCard.setSummoningSick(true);
-                    activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
-                } else {
-                    draggingCard.resetToPreviousLocation();
-                }
-            } else if (draggingCard.canAttack()) {
-                if (enemyBoardTargetSlot != -1) { // Target Enemy Board
-                    var enemyCard = enemyBoard.getCardAtIndex(enemyBoardTargetSlot);
-                    if (enemyCard != null) {
-                        draggingCard.fight(enemyCard);
-                    }
-                } else if (enemyHeroTargeted) { // Target Enemy Hero
-                    boolean gameOver = draggingCard.fight(enemyHero);
-                    if (gameOver) {
-                        draggingCard = null;
-                        game.setScreen(new GameOverScreen(game));
-                        return true;
-                    }
-                }
-                // resetToPreviousLocation below (line 437) handles returning the card to the board
+            if (boardTargetSlot != -1) {
+                effectTriggered = playerBoard.handleEffect(boardTargetSlot, draggingCard);
+            } else if (enemyBoardTargetSlot != -1) {
+                effectTriggered = enemyBoard.handleEffect(enemyBoardTargetSlot, draggingCard);
+            } else if (enemyHeroTargeted) {
+                effectTriggered = enemyHero.handleEffect(draggingCard);
+            } else if (playerHero.contains(coordinates)) {
+                effectTriggered = playerHero.handleEffect(draggingCard);
             }
 
-            // Check if our card has an effect to trigger
-//            switch (draggingCard.getStatusEffect().getEffectTrigger()) {
-//                // TODO handle discarding a card from your hand
-//                case DISCARD:
-//                    draggingCard.handleDiscard();
-//                    break;
-//                // When we are summoning the card from our hand onto the board
-//                case SUMMON:
-//                    if (boardTargetSlot != -1) {
-//                        if (summonEffectTriggeredOnPlayerBoard) {
-//                            playerBoard.addCard(draggingCard);
-//                            activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
-//                        } else {
-//                            draggingCard.resetToPreviousLocation();
-//                        }
-//                    } else if (enemyBoardTargetSlot != -1) {
-//                        if (summonEffectTriggeredOnEnemyBoard) {
-//                            playerBoard.addCard(draggingCard);
-//                            activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
-//                        } else {
-//                            draggingCard.resetToPreviousLocation();
-//                        }
-//                    }
-//                    break;
-//                case NONE:
-//                    if (boardTargetSlot != -1) {
-//                        playerBoard.addCard(draggingCard);
-//                        activePlayer.setCurrentMana(activePlayer.getCurrentMana() - draggingCard.getCost());
-//                    }
-//                    break;
-//            }
-//        } else if (draggingCard.getCurrentLocation() == BOARD) {
-//            if (enemyBoardTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyBoardTargetSlot) != null) {
-//                Gdx.app.log("Enemy", draggingCard.getCurrentLocation() + " " + enemyBoardTargetSlot);
-//                if (draggingCard.getAttackCount() > 0) {
-//                    draggingCard.fight(enemyBoard.getCardAtIndex(enemyBoardTargetSlot));
-//                } else {
-//                    this.draggingCard.resetToPreviousLocation();
-//                }
-//            } else if (enemyHeroTargeted) {
-//                Gdx.app.log("Hero", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
-//                boolean gameOver = draggingCard.fight(enemyHero);
-//                if (gameOver) {
-//                    game.setScreen(new GameOverScreen(game));
-//                } else {
-//                    this.draggingCard.resetToPreviousLocation();
-//                }
-//            }
-//        }
-            this.draggingCard.resetToPreviousLocation();
-            stage.getBatch().begin();
-            playerBoard.draw(stage.getBatch());
-            playerHand.draw(stage.getBatch());
-            playerHero.draw(stage.getBatch());
-            enemyBoard.draw(stage.getBatch());
-            enemyHero.draw(stage.getBatch());
-            enemyHand.draw(stage.getBatch());
-            currentAnimation = null;
-            stage.getBatch().end();
-            draggingCard = null;
-            return true;
+            boolean noEffectPlayToBoard = draggingCard.getStatusEffect().getEffectTrigger().equals(NONE)
+                    && boardTargetSlot != -1;
+            if (effectTriggered || noEffectPlayToBoard) {
+                // Restore board to its canonical pre-hover state, then find the best slot
+                playerBoard.restoreSnapshot();
+                int targetSlot = playerBoard.nearestFreeSlot();
+                if (targetSlot != -1) {
+                    activePlayer.spendManaForCard(draggingCard);
+                    draggingCard.setSummoningSick(true);
+                    Deck.moveCardBetweenDecks(draggingCard, sourceDeck, playerBoard, targetSlot);
+                    // Snapshot both decks at their new stable state
+                    playerBoard.snapShot();
+                    playerHand.rebalance(-1);
+                    playerHand.snapShot();
+                    playerHand.setPreviousTargetSlot(-1);
+                    playerBoard.setPreviousTargetSlot(-1);
+                    cardPlaced = true;
+                }
+            }
+        } else if (draggingCard.getCurrentLocation() == BOARD && draggingCard.canAttack()) {
+            // --- Attacking with a board card ---
+            if (enemyBoardTargetSlot != -1) {
+                Card enemyCard = enemyBoard.getCardAtIndex(enemyBoardTargetSlot);
+                if (enemyCard != null) {
+                    draggingCard.fight(enemyCard);
+                    // Snapshot board after combat (card may have moved to discard)
+                    sourceDeck.snapShot();
+                    sourceDeck.stopDragging();
+                    sourceDeck.setPreviousTargetSlot(-1);
+                    cardPlaced = true;
+                }
+            } else if (enemyHeroTargeted) {
+                boolean gameOver = draggingCard.fight(enemyHero);
+                if (gameOver) {
+                    game.setScreen(new MenuScreen(game));
+                }
+                sourceDeck.snapShot();
+                sourceDeck.stopDragging();
+                sourceDeck.setPreviousTargetSlot(-1);
+                cardPlaced = true;
+            }
         }
-        return false;
+
+        if (!cardPlaced) {
+            // Invalid drop: restore card and both decks to their pre-drag state
+            sourceDeck.restoreSnapshot();
+            sourceDeck.setPreviousTargetSlot(-1);
+            sourceDeck.stopDragging();
+            // Also restore the other deck in case hover animations shifted it
+            Deck otherDeck = (sourceDeck == playerBoard) ? playerHand : playerBoard;
+            otherDeck.restoreSnapshot();
+            otherDeck.setPreviousTargetSlot(-1);
+        }
+
+        currentAnimation = null;
+        draggingCard = null;
+        deltaCalculated = false;
+        return true;
     }
 
 

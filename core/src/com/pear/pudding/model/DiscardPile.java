@@ -31,6 +31,8 @@ public class DiscardPile extends Deck {
     public boolean addCard(Card targetCard, int index) {
         if (index != -1 && isIndexEmpty(index)) {
             this.cards[index] = targetCard;
+            var targetSlotPos = getSlotPositionAtIndex(index);
+            targetCard.move(targetSlotPos.x, targetSlotPos.y, Location.DISCARD);
             return true;
         }
         return false;
