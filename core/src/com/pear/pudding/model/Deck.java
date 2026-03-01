@@ -156,7 +156,8 @@ public class Deck {
     }
 
     public boolean addCard(Card targetCard, int index) {
-        if (index != -1) {
+        // Allow overwriting only if the slot is null or holds the card being dragged
+        if (index != -1 && (cards[index] == null || cards[index] == draggingCard)) {
             this.cards[index] = targetCard;
             var targetSlotPos = getSlotPositionAtIndex(index);
             targetCard.move(targetSlotPos.x, targetSlotPos.y, Location.getEnum(this.getClass().getSimpleName()));

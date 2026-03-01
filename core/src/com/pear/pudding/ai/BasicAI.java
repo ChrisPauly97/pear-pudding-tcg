@@ -72,14 +72,15 @@ public class BasicAI {
      * Attack with available minions on the board.
      * Prioritizes killing weak enemy minions.
      * Attacks hero if board is clear or AI health is low (aggressive finish).
+     * @return true if the enemy hero was destroyed (game over), false otherwise
      */
-    public void attackWithMinions() {
+    public boolean attackWithMinions() {
         Gdx.app.log("BasicAI", "=== Attack Phase Started ===");
 
-        // Get all attackable minions
+        // Get all minions that can attack this turn (not summoning sick, has attacks left)
         List<Card> attackers = new ArrayList<>();
         for (Card card : aiPlayer.getBoard().getCards()) {
-            if (card != null && card.getAttackCount() > 0) {
+            if (card != null && card.canAttack()) {
                 attackers.add(card);
             }
         }
@@ -87,7 +88,7 @@ public class BasicAI {
         if (attackers.isEmpty()) {
             Gdx.app.log("BasicAI", "No minions available to attack");
             Gdx.app.log("BasicAI", "=== Attack Phase Ended ===");
-            return;
+            return false;
         }
 
         // Get enemy minions
@@ -123,11 +124,14 @@ public class BasicAI {
                 boolean gameOver = executor.attackHero(attacker, enemyPlayer.getHero());
                 if (gameOver) {
                     Gdx.app.log("BasicAI", "AI wins the game!");
+                    Gdx.app.log("BasicAI", "=== Attack Phase Ended ===");
+                    return true;
                 }
             }
         }
 
         Gdx.app.log("BasicAI", "=== Attack Phase Ended ===");
+        return false;
     }
 
     /**

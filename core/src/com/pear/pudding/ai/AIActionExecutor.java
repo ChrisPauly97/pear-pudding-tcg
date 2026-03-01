@@ -37,8 +37,9 @@ public class AIActionExecutor {
             );
 
             if (success) {
-                // Deduct mana
+                // Deduct mana and mark as summoning sick (cannot attack same turn it's played)
                 player.setCurrentMana(player.getCurrentMana() - card.getCost());
+                card.setSummoningSick(true);
                 Gdx.app.log("AIActionExecutor", "Played card: " + card.getClass().getSimpleName() + " at slot " + boardSlot);
             }
 

@@ -3,12 +3,9 @@ package com.pear.pudding.model;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -63,16 +60,9 @@ public class Card extends Actor {
     private boolean faceUp = false;
     private AssetManager manager;
     private Location currentLocation;
-    private static Texture borderTexture;
 
-    static {
-        // Create a simple 1x1 white pixel texture for drawing borders
-        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.WHITE);
-        pixmap.fill();
-        borderTexture = new Texture(pixmap);
-        pixmap.dispose();
-    }
+    /** No-arg constructor for unit testing — does not initialize LibGDX resources. */
+    Card() {}
 
     // TODO set a min health of 0 for every unit to they can't go above it when getting healed
     public void takeDamage(int damage){
@@ -150,13 +140,13 @@ public class Card extends Actor {
             switch (card.getStatusEffect().getEffectType()) {
                 case HEAL:
                     card.health += card.getStatusEffect().getValue();
-                    break;
+                    return true;
                 case DAMAGE:
                     enemyCard.health -= card.getStatusEffect().getValue();
-                    break;
+                    return true;
                 case REMOVE:
                     enemyCard.setOutOfPlay(card.getStatusEffect().getValue());
-                    break;
+                    return true;
                 default:
                     return false;
             }
@@ -175,14 +165,14 @@ public class Card extends Actor {
         this.attackCount--;
         this.health -= hero.getAttack();
         hero.health -= getAttack();
-        if (hero.health <= 0) {
-            return true;
-        }
+        // Check card death FIRST so it's always handled, even if hero also dies simultaneously
         if (this.health <= 0) {
             moveToDiscardPile();
         }
+        if (hero.health <= 0) {
+            return true;
+        }
         return false;
-
     }
 
     public void checkDiscard(){
@@ -201,16 +191,28 @@ public class Card extends Actor {
             case BOARD:
                 board.restoreSnapshot();
                 hand.restoreSnapshot();
-                var nearestFreeSlot = board.nearestFreeSlot();
-                board.addCard(this, nearestFreeSlot);
+                int nearestFreeSlot = board.nearestFreeSlot();
+                if (nearestFreeSlot != -1) {
+                    board.addCard(this, nearestFreeSlot);
+                } else {
+                    // Board is full — prevent limbo by sending to discard
+                    moveToDiscardPile();
+                }
                 board.setPreviousTargetSlot(-1);
                 break;
             case HAND:
                 hand.restoreSnapshot();
                 board.restoreSnapshot();
-                hand.addCard(this, hand.firstEmptySlot());
+                int emptySlot = hand.firstEmptySlot();
+                if (emptySlot != -1) {
+                    hand.addCard(this, emptySlot);
+                }
                 hand.rebalance(-1);
                 hand.setPreviousTargetSlot(-1);
+                break;
+            case DISCARD:
+                // Card died during combat — already in discard, nothing to do
+                break;
         }
     }
 
@@ -221,7 +223,6 @@ public class Card extends Actor {
         this.attackCount--;
         this.health -= enemy.getAttack();
         enemy.health -= getAttack();
-
         if (enemy.health <= 0) {
             enemy.moveToDiscardPile();
         }
@@ -232,8 +233,16 @@ public class Card extends Actor {
 //
 
     public void moveToDiscardPile() {
+        // Already discarded — nothing to do
+        if (currentLocation == DISCARD) {
+            return;
+        }
+
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
+        if (emptyDiscardSlot == -1) {
+            return; // Discard pile full — prevent limbo by leaving card in place
+        }
 
         // Use atomic move
         Deck sourceDeck = null;
@@ -273,9 +282,9 @@ public class Card extends Actor {
 
     public void move(float x, float y, Location location) {
         setPosition(x, y);
-        this.cardBack.setPosition(x, y);
-        this.cardBackground.setPosition(x, y);
-        this.cardCanPlayBackground.setPosition(x, y);
+        if (cardBack != null) this.cardBack.setPosition(x, y);
+        if (cardBackground != null) this.cardBackground.setPosition(x, y);
+        if (cardCanPlayBackground != null) this.cardCanPlayBackground.setPosition(x, y);
         this.currentLocation = location;
         switch (location) {
             case BOARD, HAND:
@@ -292,9 +301,9 @@ public class Card extends Actor {
 
     public void move(float x, float y, float w, float h) {
         setBounds(x, y, w, h);
-        this.cardBack.setBounds(x, y, w, h);
-        this.cardBackground.setBounds(x, y, w, h);
-        this.cardCanPlayBackground.setPosition(x, y);
+        if (cardBack != null) this.cardBack.setBounds(x, y, w, h);
+        if (cardBackground != null) this.cardBackground.setBounds(x, y, w, h);
+        if (cardCanPlayBackground != null) this.cardCanPlayBackground.setPosition(x, y);
         if (getImage() != null) {
             this.image.setBounds(getX(), getY(), getWidth(), getHeight());
         }

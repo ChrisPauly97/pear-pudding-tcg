@@ -42,8 +42,6 @@ import static com.pear.pudding.model.Constants.*;
 
 
 // TODO implement menu screen
-// TODO implement game over
-// TODO implement game win
 // TODO implement card ability
 // TODO fix font resolution
 public class PearPudding implements Screen, InputProcessor{
@@ -161,14 +159,20 @@ public class PearPudding implements Screen, InputProcessor{
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
-                ai.attackWithMinions();
+                boolean gameOver = ai.attackWithMinions();
+                if (gameOver) {
+                    game.setScreen(new GameOverScreen(game));
+                }
             }
         }, AI_PLAY_CARDS_DELAY + AI_ATTACK_DELAY);
 
         Timer.schedule(new Timer.Task() {
             @Override
             public void run() {
-                endAITurn();
+                // Only end AI turn if the game is still running (player hero still alive)
+                if (player1.getHero().getHealth() > 0) {
+                    endAITurn();
+                }
             }
         }, AI_PLAY_CARDS_DELAY + AI_ATTACK_DELAY + AI_END_TURN_DELAY);
     }
