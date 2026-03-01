@@ -20,11 +20,8 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.MyGame;
-<<<<<<< HEAD
 import com.pear.pudding.ai.BasicAI;
-=======
 import com.pear.pudding.enums.Location;
->>>>>>> a249fa9efb1b3840de6d4c085ef30f4561ff7313
 import com.pear.pudding.input.EndTurnClickListener;
 import com.pear.pudding.model.Board;
 import com.pear.pudding.model.Card;
@@ -56,14 +53,12 @@ public class PearPudding implements Screen, InputProcessor{
     AssetManager manager;
     Button backButton;
     Button endTurnButton;
-<<<<<<< HEAD
     BasicAI ai;
 
     // AI turn timing constants
     private static final float AI_PLAY_CARDS_DELAY = 0.5f;
     private static final float AI_ATTACK_DELAY = 0.8f;
     private static final float AI_END_TURN_DELAY = 1.0f;
-=======
     float stateTime;
     Animation<TextureRegion> runningAnimation;
     Card draggingCard;
@@ -71,8 +66,6 @@ public class PearPudding implements Screen, InputProcessor{
     private boolean deltaCalculated = false;
     Vector2 deltaVec = new Vector2();
     Animation<TextureRegion> currentAnimation;
-
->>>>>>> a249fa9efb1b3840de6d4c085ef30f4561ff7313
 
     public PearPudding(MyGame game, AssetManager manager, Player player1, Player player2) {
         try {
