@@ -12,8 +12,10 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.ScreenUtils;
+import com.badlogic.gdx.utils.Timer;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.MyGame;
+import com.pear.pudding.ai.BasicAI;
 import com.pear.pudding.input.EndTurnClickListener;
 import com.pear.pudding.input.PuddingInputProcessor;
 import com.pear.pudding.model.Card;
@@ -37,6 +39,12 @@ public class PearPudding implements Screen {
     AssetManager manager;
     Button backButton;
     Button endTurnButton;
+    BasicAI ai;
+
+    // AI turn timing constants
+    private static final float AI_PLAY_CARDS_DELAY = 0.5f;
+    private static final float AI_ATTACK_DELAY = 0.8f;
+    private static final float AI_END_TURN_DELAY = 1.0f;
 
     public PearPudding(MyGame game, AssetManager manager, Player player1, Player player2) {
         try {
@@ -56,8 +64,14 @@ public class PearPudding implements Screen {
             stage.addActor(player1.getHero());
             stage.addActor(player2.getHero());
 
+            // Initialize AI if player2 is AI-controlled
+            if (player2.isAI()) {
+                this.ai = new BasicAI(player2, player1);
+                Gdx.app.log("PearPudding", "AI opponent initialized");
+            }
+
             Button buttonEndTurn = new TextButton("End Turn", manager.get("uiskin.json", Skin.class));
-            buttonEndTurn.addListener(new EndTurnClickListener(player1, player2));
+            buttonEndTurn.addListener(new EndTurnClickListener(player1, player2, this::scheduleAITurn));
             buttonEndTurn.setBounds(WINDOW_WIDTH - 100 - BUFFER, WINDOW_HEIGHT / 2, 100, 40);
 
             Button backButton = new TextButton("Back", manager.get("uiskin.json", Skin.class));
@@ -84,6 +98,49 @@ public class PearPudding implements Screen {
         } catch (Exception e) {
             Gdx.app.log("Create", "Failed", e);
         }
+    }
+
+    /**
+     * Schedules AI turn execution with delays between actions.
+     * Executes in sequence: play cards -> attack -> end turn
+     */
+    private void scheduleAITurn() {
+        if (ai == null || !player2.isAI()) {
+            return;
+        }
+
+        Gdx.app.log("PearPudding", "Scheduling AI turn...");
+
+        // Schedule tasks with cumulative delays
+        Timer.schedule(new Timer.Task() {
+            @Override
+            public void run() {
+                ai.playCards();
+            }
+        }, AI_PLAY_CARDS_DELAY);
+
+        Timer.schedule(new Timer.Task() {
+            @Override
+            public void run() {
+                ai.attackWithMinions();
+            }
+        }, AI_PLAY_CARDS_DELAY + AI_ATTACK_DELAY);
+
+        Timer.schedule(new Timer.Task() {
+            @Override
+            public void run() {
+                endAITurn();
+            }
+        }, AI_PLAY_CARDS_DELAY + AI_ATTACK_DELAY + AI_END_TURN_DELAY);
+    }
+
+    /**
+     * Ends the AI's turn and switches back to player1.
+     */
+    private void endAITurn() {
+        Gdx.app.log("PearPudding", "AI ending turn");
+        player2.endTurn();
+        player1.startTurn();
     }
 
     //TODO Card Types should have some affinity, i.e. undead are good against living creatures

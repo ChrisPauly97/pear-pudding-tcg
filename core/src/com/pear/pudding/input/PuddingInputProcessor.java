@@ -101,7 +101,7 @@ public class PuddingInputProcessor implements InputProcessor {
                 player1.getHand().setCardZoomed(true);
                 clickedCard.setCurrentLocation(ZOOM);
             } else if (currentLocation == ZOOM) {
-//                clickedCard.reverseZoom();
+                clickedCard.unzoom();
                 player1.getHand().setCardZoomed(false);
                 clickedCard.setCurrentLocation(HAND);
             }
@@ -110,10 +110,12 @@ public class PuddingInputProcessor implements InputProcessor {
 
     public void handleHitCard(Card card) {
         if (card.getCurrentLocation() == Location.BOARD || card.getCurrentLocation() == Location.HAND) {
-            card.getPlayer().getBoard().removeCard(card);
-            card.getPlayer().getHand().removeCard(card);
-            card.getPlayer().getBoard().snapShot();
-            card.getPlayer().getHand().snapShot();
+            // Use the dragging flag instead of removing the card
+            if (card.getCurrentLocation() == Location.BOARD) {
+                card.getPlayer().getBoard().startDragging(card);
+            } else if (card.getCurrentLocation() == Location.HAND) {
+                card.getPlayer().getHand().startDragging(card);
+            }
             draggingCard = card;
         }
     }
@@ -126,36 +128,61 @@ public class PuddingInputProcessor implements InputProcessor {
             Hand playerHand = draggingCard.getPlayer().getHand();
             Board enemyBoard = player1.isMyTurn() ? player2.getBoard() : player1.getBoard();
             Hero enemyHero = player1.isMyTurn() ? player2.getHero() : player1.getHero();
+
+            // Determine source deck
+            Deck sourceDeck = draggingCard.getCurrentLocation() == BOARD ? playerBoard : playerHand;
+
             int boardTargetSlot = playerBoard.getIndexUnderMouse(coordinates);
             int handTargetSlot = playerHand.getIndexUnderMouse(coordinates);
             int enemyTargetSlot = enemyBoard.getIndexUnderMouse(coordinates);
             boolean enemyHeroTargeted = enemyHero.contains(coordinates);
+
             if (boardTargetSlot >= 0) {
                 Gdx.app.log("Board", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
-                if (playerBoard.getCardAtIndex(boardTargetSlot) == null) {
-                    if (playerBoard.onTheLeft(boardTargetSlot))
-                        boardTargetSlot = playerBoard.nearestFreeSlotOnLeft(boardTargetSlot);
-                    else
-                        boardTargetSlot = playerBoard.nearestFreeSlotOnRight(boardTargetSlot);
+                Card targetCard = playerBoard.getCardAtIndex(boardTargetSlot);
+                // Allow dropping on empty slots or on the dragging card's own slot
+                if (targetCard == null || targetCard == draggingCard) {
+                    // Only allow playing from hand to board if player has enough mana
+                    if (draggingCard.getCurrentLocation() == HAND && !draggingCard.getPlayer().hasEnoughMana(draggingCard)) {
+                        // Not enough mana, return card to original location
+                        resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+                    } else {
+                        // Find the actual target slot (snap to nearest free slot)
+                        if (targetCard != draggingCard) {
+                            if (playerBoard.onTheLeft(boardTargetSlot))
+                                boardTargetSlot = playerBoard.nearestFreeSlotOnLeft(boardTargetSlot);
+                            else
+                                boardTargetSlot = playerBoard.nearestFreeSlotOnRight(boardTargetSlot);
+                        }
 
-                    playerBoard.addCard(draggingCard, boardTargetSlot);
+                        // Deduct mana and apply summoning sickness if playing from hand
+                        if (draggingCard.getCurrentLocation() == HAND) {
+                            draggingCard.getPlayer().spendManaForCard(draggingCard);
+                            draggingCard.setSummoningSick(true);
+                        }
+
+                        // Atomic move
+                        Deck.moveCardBetweenDecks(draggingCard, sourceDeck, playerBoard, boardTargetSlot);
+                    }
                 }
             } else if (handTargetSlot != -1) {
                 Gdx.app.log("Hand", draggingCard.getCurrentLocation() + " " + handTargetSlot);
-                if (playerHand.getCardAtIndex(handTargetSlot) == null) {
-                    playerHand.addCard(draggingCard, playerHand.firstEmptySlot());
-                }
-            } else if (enemyTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyTargetSlot) != null) {
+                int targetIndex = playerHand.firstEmptySlot();
+                Deck.moveCardBetweenDecks(draggingCard, sourceDeck, playerHand, targetIndex);
+                playerHand.rebalance(-1);
+            } else if (enemyTargetSlot != -1 && enemyBoard.getCardAtIndex(enemyTargetSlot) != null && draggingCard.getCurrentLocation() == BOARD) {
                 Gdx.app.log("Enemy", draggingCard.getCurrentLocation() + " " + enemyTargetSlot);
                 draggingCard.fight(enemyBoard.getCardAtIndex(enemyTargetSlot));
-                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
-            } else if (enemyHeroTargeted) {
+                // Don't reset - let dead cards stay dead and attacking card stay in place
+                playerBoard.stopDragging();
+            } else if (enemyHeroTargeted && draggingCard.getCurrentLocation() == BOARD) {
                 Gdx.app.log("Hero", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
                 boolean gameOver = draggingCard.fight(enemyHero);
                 if (gameOver) {
                     game.setScreen(new MenuScreen(game));
-                }else {
-                resetToPreviousLocation(boardTargetSlot, playerBoard, playerHand);
+                } else {
+                    // Don't reset - let attacking card stay in place
+                    playerBoard.stopDragging();
                 }
             } else {
                 Gdx.app.log("No target", draggingCard.getCurrentLocation() + " " + boardTargetSlot);
@@ -163,6 +190,7 @@ public class PuddingInputProcessor implements InputProcessor {
             }
 
             draggingCard = null;
+            deltaCalculated = false;
             return true;
         }
 
@@ -174,20 +202,14 @@ public class PuddingInputProcessor implements InputProcessor {
         switch (draggingCard.getCurrentLocation()) {
             case BOARD:
                 board.restoreSnapshot();
-                if (board.getCardAtIndex(boardTargetSlot) == null) {
-                    if (board.onTheLeft(boardTargetSlot))
-                        boardTargetSlot = board.nearestFreeSlotOnLeft(boardTargetSlot);
-                    else if (!board.onTheLeft(boardTargetSlot))
-                        boardTargetSlot = board.nearestFreeSlotOnRight(boardTargetSlot);
-                    board.addCard(this.draggingCard, boardTargetSlot);
-                }
                 board.setPreviousTargetSlot(-1);
+                board.stopDragging();
                 break;
             case HAND:
                 hand.restoreSnapshot();
-                hand.addCard(this.draggingCard, hand.firstEmptySlot());
-                hand.rebalance(-1);
                 hand.setPreviousTargetSlot(-1);
+                hand.stopDragging();
+                break;
         }
     }
 
@@ -208,10 +230,7 @@ public class PuddingInputProcessor implements InputProcessor {
             myBoard.handleHover(mouseCoords);
             Hand myHand = this.draggingCard.getPlayer().getHand();
             myHand.handleHover(mouseCoords);
-            stage.getBatch().begin();
-            myBoard.draw(stage.getBatch());
-            myHand.draw(stage.getBatch());
-            stage.getBatch().end();
+            // Note: Drawing is handled by the main render loop, no need to manually draw here
         }
 
         return true;

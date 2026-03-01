@@ -24,6 +24,8 @@ public class Deck {
     Card[] snapshot;
     float slotWidth = CARD_WIDTH;
     float slotHeight = CARD_HEIGHT;
+    protected Card draggingCard = null;
+    protected int draggingCardOriginalIndex = -1;
 
     Deck(float x, float y, float width, float height, float slotCount) {
         setX(x);
@@ -36,6 +38,36 @@ public class Deck {
 
     public void snapShot() {
         this.snapshot = Arrays.copyOf(cards, cards.length);
+    }
+
+    /**
+     * Marks a card as being dragged without removing it from the deck array.
+     * This prevents rebalancing from treating the slot as empty during drag.
+     */
+    public void startDragging(Card card) {
+        for (int i = 0; i < cards.length; i++) {
+            if (cards[i] == card) {
+                this.draggingCard = card;
+                this.draggingCardOriginalIndex = i;
+                snapShot();
+                return;
+            }
+        }
+    }
+
+    /**
+     * Clears the dragging state.
+     */
+    public void stopDragging() {
+        this.draggingCard = null;
+        this.draggingCardOriginalIndex = -1;
+    }
+
+    /**
+     * Returns true if this deck is currently tracking a dragging card.
+     */
+    public boolean isDragging() {
+        return this.draggingCard != null;
     }
 
     public void restoreSnapshot() {
@@ -116,7 +148,7 @@ public class Deck {
 
     public int firstEmptySlot() {
         for (int i = 0; i < cards.length; i++) {
-            if (cards[i] == null) {
+            if (cards[i] == null || cards[i] == draggingCard) {
                 return i;
             }
         }
@@ -138,7 +170,10 @@ public class Deck {
         for (int i = startSlot; i < targetSlot; i++) {
             Card currentCard = getCards()[i];
             Card nextCard = getCards()[i + 1];
-            if (currentCard == null && nextCard != null) {
+            // Treat dragging card's slot as empty, but don't move the dragging card itself
+            boolean currentEmpty = currentCard == null || currentCard == draggingCard;
+            boolean nextExists = nextCard != null && nextCard != draggingCard;
+            if (currentEmpty && nextExists) {
                 var newSlotPos = getSlotPositionAtIndex(i);
                 getCards()[i + 1].move(newSlotPos.x, newSlotPos.y, getCards()[i+1].getCurrentLocation());
                 addCard(nextCard, i);
@@ -152,7 +187,10 @@ public class Deck {
         for (int i = startSlot; i > targetSlot; i--) {
             Card currentCard = getCards()[i];
             Card previousCard = getCards()[i - 1];
-            if (currentCard == null && previousCard != null) {
+            // Treat dragging card's slot as empty, but don't move the dragging card itself
+            boolean currentEmpty = currentCard == null || currentCard == draggingCard;
+            boolean prevExists = previousCard != null && previousCard != draggingCard;
+            if (currentEmpty && prevExists) {
                 var newSlotPos = getSlotPositionAtIndex(i);
                 getCards()[i - 1].move(newSlotPos.x, newSlotPos.y, getCards()[i-1].getCurrentLocation());
                 addCard(previousCard, i);
@@ -164,9 +202,11 @@ public class Deck {
     public int nearestFreeSlotOnLeft(int targetSlot) {
         int middleSlotIndex = cards.length / 2;
         for (int i = targetSlot; i <= middleSlotIndex; i++) {
-            if (i == middleSlotIndex && isIndexEmpty(middleSlotIndex)) {
+            boolean middleEmpty = isIndexEmpty(middleSlotIndex) || cards[middleSlotIndex] == draggingCard;
+            boolean nextOccupied = (i + 1 < cards.length) && !isIndexEmpty(i + 1) && cards[i + 1] != draggingCard;
+            if (i == middleSlotIndex && middleEmpty) {
                 return middleSlotIndex;
-            } else if (!isIndexEmpty(i + 1)) {
+            } else if (nextOccupied) {
                 return i;
             }
         }
@@ -176,9 +216,11 @@ public class Deck {
     public int nearestFreeSlotOnRight(int targetIndex) {
         int middleSlotIndex = cards.length / 2;
         for (int i = targetIndex; i >= middleSlotIndex; i--) {
-            if (i == middleSlotIndex && isIndexEmpty(middleSlotIndex)) {
+            boolean middleEmpty = isIndexEmpty(middleSlotIndex) || cards[middleSlotIndex] == draggingCard;
+            boolean prevOccupied = (i - 1 >= 0) && !isIndexEmpty(i - 1) && cards[i - 1] != draggingCard;
+            if (i == middleSlotIndex && middleEmpty) {
                 return middleSlotIndex;
-            } else if (!isIndexEmpty(i - 1)) {
+            } else if (prevOccupied) {
                 return i;
             }
         }
@@ -218,6 +260,36 @@ public class Deck {
             }
         }
         return null;
+    }
+
+    /**
+     * Atomically moves a card from one deck to another (or within the same deck).
+     * This is the single source of truth for card transfers.
+     *
+     * @param card The card to move
+     * @param fromDeck The source deck (can be null if card is new)
+     * @param toDeck The destination deck
+     * @param toIndex The target index in the destination deck
+     * @return true if the move was successful
+     */
+    public static boolean moveCardBetweenDecks(Card card, Deck fromDeck, Deck toDeck, int toIndex) {
+        if (card == null || toDeck == null || toIndex < 0 || toIndex >= toDeck.cards.length) {
+            return false;
+        }
+
+        // Remove from source deck if specified
+        if (fromDeck != null) {
+            fromDeck.removeCard(card);
+            fromDeck.stopDragging();
+        }
+
+        // Add to destination deck
+        boolean added = toDeck.addCard(card, toIndex);
+        if (added) {
+            toDeck.stopDragging();
+        }
+
+        return added;
     }
 
 

@@ -48,7 +48,7 @@ public class Board extends Deck {
     public int nearestFreeSlotFromMiddleOnLeft() {
         int middleSlotIndex = cards.length / 2;
         for (int i = middleSlotIndex - 1; i >= 0; i--) {
-            if (isIndexEmpty(i)) {
+            if (isIndexEmpty(i) || cards[i] == draggingCard) {
                 return i;
             }
         }
@@ -58,7 +58,7 @@ public class Board extends Deck {
     public int nearestFreeSlotFromMiddleOnRight() {
         int middleSlotIndex = cards.length / 2;
         for (int i = middleSlotIndex + 1; i < cards.length; i++) {
-            if (isIndexEmpty(i)) {
+            if (isIndexEmpty(i) || cards[i] == draggingCard) {
                 return i;
             }
         }

@@ -3,6 +3,7 @@ package com.pear.pudding.model;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
@@ -36,6 +37,10 @@ public class Card extends Actor {
     private CardType cardType;
     private Integer attackCount = 1;
     /**
+     * True if this card was just played this turn and cannot attack yet (summoning sickness)
+     */
+    private boolean summoningSick = false;
+    /**
      * The player associated to the card
      * Every card belongs to either player 1 or player 2
      */
@@ -52,6 +57,16 @@ public class Card extends Actor {
     private boolean faceUp = false;
     private AssetManager manager;
     private Location currentLocation;
+    private static Texture borderTexture;
+
+    static {
+        // Create a simple 1x1 white pixel texture for drawing borders
+        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.WHITE);
+        pixmap.fill();
+        borderTexture = new Texture(pixmap);
+        pixmap.dispose();
+    }
 
 
     public Card(float x, float y, float width, float height, Color color, Integer cost, Integer attack, Integer health,
@@ -85,7 +100,19 @@ public class Card extends Actor {
         return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
     }
 
+    public boolean canAttack() {
+        return this.attackCount > 0 && !this.summoningSick && this.currentLocation == BOARD;
+    }
+
+    public boolean canPlay() {
+        return this.currentLocation == HAND && this.player.hasEnoughMana(this);
+    }
+
     public boolean fight(Hero hero){
+        if (!canAttack()) {
+            return false;
+        }
+        this.attackCount--;
         this.health -= hero.getAttack();
         hero.health -= getAttack();
         if (hero.health <= 0) {
@@ -93,14 +120,16 @@ public class Card extends Actor {
         }
         if (this.health <= 0) {
             moveToDiscardPile();
-        } else {
-            player.getBoard().restoreSnapshot();
         }
         return false;
 
     }
 
     public void fight(Card enemy) {
+        if (!canAttack()) {
+            return;
+        }
+        this.attackCount--;
         this.health -= enemy.getAttack();
         enemy.health -= getAttack();
         if (enemy.health <= 0) {
@@ -108,11 +137,6 @@ public class Card extends Actor {
         }
         if (this.health <= 0) {
             moveToDiscardPile();
-        } else {
-            player.getBoard().restoreSnapshot();
-//            this.player.getBoard().onHover(player.getBoard().getSlots().get(player.getBoard().getSlots().size()/2), this, null);
-//             return to previous position
-//            this.moveToPreviousPosition();
         }
     }
 //
@@ -120,14 +144,19 @@ public class Card extends Actor {
     public void moveToDiscardPile() {
         var myDiscardPile = this.getPlayer().getDiscardPile();
         var emptyDiscardSlot = myDiscardPile.firstEmptySlot();
-        myDiscardPile.addCard(this, emptyDiscardSlot);
+
+        // Use atomic move
+        Deck sourceDeck = null;
         switch(currentLocation){
             case BOARD:
-                this.player.getBoard().removeCard(this);
+                sourceDeck = this.player.getBoard();
+                break;
             case HAND:
-                this.player.getHand().removeCard(this);
+                sourceDeck = this.player.getHand();
+                break;
         }
-        this.move(myDiscardPile.getSlotPositionAtIndex(0).x, myDiscardPile.getSlotPositionAtIndex(0).y, DISCARD);
+
+        Deck.moveCardBetweenDecks(this, sourceDeck, myDiscardPile, emptyDiscardSlot);
     }
 
 
@@ -140,18 +169,22 @@ public class Card extends Actor {
         }
     }
 
+    public void unzoom() {
+        // Find the card's index in the hand
+        Hand hand = this.player.getHand();
+        for (int i = 0; i < hand.getCards().length; i++) {
+            if (hand.getCards()[i] == this) {
+                // Found the card, move it back to its proper position with normal size
+                var handPos = hand.getSlotPositionAtIndex(i);
+                move(handPos.x, handPos.y, Constants.CARD_WIDTH, Constants.CARD_HEIGHT);
+                return;
+            }
+        }
+    }
+
     public Bound imagePos(float cardX, float cardY, float cardW, float cardH) {
         return new Bound(cardX, cardY + cardH / 2, cardW, cardH / 2);
     }
-//
-//    public void reverseZoom() {
-//        if (this.image != null) {
-//            this.image.setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
-//            this.cardBackground.setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
-//        }
-//        moveToPreviousPosition();
-//        setBounds(this.previousSlot.getX(), this.previousSlot.getY(), this.previousSlot.getWidth(), this.previousSlot.getHeight());
-//    }
 
     public void move(float x, float y, Location location) {
         setPosition(x, y);
@@ -183,6 +216,21 @@ public class Card extends Actor {
 
     @Override
     public void draw(Batch batch, float parentAlpha) {
+        // Draw green border if card is playable/active
+        if (faceUp && (canAttack() || canPlay())) {
+            Color oldColor = batch.getColor();
+            batch.setColor(0, 1, 0, 1); // Green color
+            float borderWidth = 4f;
+
+            // Draw border (top, bottom, left, right)
+            batch.draw(borderTexture, getX(), getY() + getHeight() - borderWidth, getWidth(), borderWidth); // Top
+            batch.draw(borderTexture, getX(), getY(), getWidth(), borderWidth); // Bottom
+            batch.draw(borderTexture, getX(), getY(), borderWidth, getHeight()); // Left
+            batch.draw(borderTexture, getX() + getWidth() - borderWidth, getY(), borderWidth, getHeight()); // Right
+
+            batch.setColor(oldColor);
+        }
+
         this.cardBackground.draw(batch, 1f);
         if (this.faceUp) {
             if (this.image != null) {

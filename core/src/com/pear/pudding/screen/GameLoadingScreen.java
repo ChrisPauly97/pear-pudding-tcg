@@ -148,8 +148,8 @@ public class GameLoadingScreen extends AbstractScreen {
             if(game.manager.isFinished()) { // If the screen is touched after the game is done loading, go to the main menu screen
                 var font = game.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
                 game.manager.get("uiskin.json", Skin.class).add("default-font",font );
-                this.player1 = new Player(true, game.manager);
-                this.player2 = new Player(false, game.manager);
+                this.player1 = new Player(true, game.manager, false);  // Human player
+                this.player2 = new Player(false, game.manager, true);  // AI player
                 player1.initializeDeck(stage);
                 player2.initializeDeck(stage);
                 game.setScreen(new PearPudding(game, game.manager, player1, player2));

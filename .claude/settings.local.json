@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew desktop:build:*)",
+      "Bash(./gradlew desktop:run:*)"
+    ]
+  }
+}

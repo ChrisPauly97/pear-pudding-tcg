@@ -29,6 +29,7 @@ public class Player extends Actor {
     private Integer totalMana = 0;
     private Integer currentMana = 0;
     private boolean isMyTurn;
+    private boolean isAI = false;
     private Hand hand;
     private DrawDeck drawDeck;
     private DiscardPile discardPile;
@@ -38,9 +39,10 @@ public class Player extends Actor {
     private Hero hero;
     private AssetManager manager;
 
-    public Player(boolean isPlayer1, AssetManager manager) {
+    public Player(boolean isPlayer1, AssetManager manager, boolean isAI) {
         this.isMyTurn = isPlayer1;
         this.manager = manager;
+        this.isAI = isAI;
         this.board = new Board(WINDOW_WIDTH / 2 - (CARD_WIDTH * ((float) NUMBER_OF_BOARD_SLOTS / 2)), isPlayer1 ? BOARD_BUFFER : WINDOW_HEIGHT - BOARD_BUFFER - CARD_HEIGHT, NUMBER_OF_BOARD_SLOTS * CARD_WIDTH, CARD_HEIGHT);
         this.hand = new Hand(WINDOW_WIDTH / 2 - (CARD_WIDTH * (NUMBER_OF_HAND_SLOTS / 2)), isPlayer1 ? BUFFER : WINDOW_HEIGHT - CARD_HEIGHT, NUMBER_OF_HAND_SLOTS * CARD_WIDTH, CARD_HEIGHT);
         this.drawDeck = new DrawDeck(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER : WINDOW_HEIGHT - BUFFER - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT);
@@ -74,6 +76,7 @@ public class Player extends Actor {
         for (Card s : getBoard().getCards()) {
             if (s != null) {
                 s.setAttackCount(1);
+                s.setSummoningSick(false);
             }
         }
     }
@@ -103,15 +106,41 @@ public class Player extends Actor {
         for (int i = this.drawDeck.getCards().length - 1; i >= 0; i--) {
             if (this.drawDeck.getCards()[i] != null) {
                 var card = this.drawDeck.getCards()[i];
-                this.drawDeck.removeCard(i);
                 var emptySlot = this.hand.firstEmptySlot();
-                var handPos = this.hand.getSlotPositionAtIndex(emptySlot);
-                if (card != null) {
-                    card.move(handPos.x, handPos.y, HAND);
-                    this.hand.addCard(card, emptySlot);
+                if (card != null && emptySlot != -1) {
+                    // Use atomic move
+                    Deck.moveCardBetweenDecks(card, this.drawDeck, this.hand, emptySlot);
                 }
                 break;
             }
         }
+    }
+
+    /**
+     * Starts this player's turn by drawing a card, replenishing mana, and refreshing the board.
+     */
+    public void startTurn() {
+        this.setMyTurn(true);
+        if (this.getHand().getHandSize() < this.getHand().getNUMBER_OF_SLOTS()) {
+            this.drawCard();
+        }
+        this.setTotalMana(this.getTotalMana() + 1);
+        this.setCurrentMana(this.getTotalMana());
+        this.refreshBoard();
+    }
+
+    /**
+     * Ends this player's turn.
+     */
+    public void endTurn() {
+        this.setMyTurn(false);
+    }
+
+    /**
+     * Spends mana for a card cost.
+     * @param card the card to spend mana for
+     */
+    public void spendManaForCard(Card card) {
+        this.setCurrentMana(this.getCurrentMana() - card.getCost());
     }
 }
