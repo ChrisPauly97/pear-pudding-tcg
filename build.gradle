@@ -1,5 +1,9 @@
 buildscript {
-    
+    // Android SDK is only required when targeting Android. Skip when the SDK is absent
+    // (e.g. in CI environments that only need core/desktop builds or unit tests).
+    def androidSdkAvailable = System.getenv('ANDROID_HOME') != null ||
+            new File(System.getProperty('user.home') + '/Android/Sdk').exists() ||
+            new File(System.getProperty('user.home') + '/android-sdk').exists()
 
     repositories {
         mavenLocal()
@@ -11,13 +15,14 @@ buildscript {
     dependencies {
         classpath 'org.docstr:gwt-gradle-plugin:1.1.29'
         classpath 'org.gretty:gretty:3.1.0'
-        classpath 'com.android.tools.build:gradle:8.1.2'
-        classpath 'com.mobidevelop.robovm:robovm-gradle-plugin:2.3.21'
+        if (androidSdkAvailable) {
+            classpath 'com.android.tools.build:gradle:8.1.2'
+            classpath 'com.mobidevelop.robovm:robovm-gradle-plugin:2.3.21'
+        }
         classpath 'org.projectlombok:lombok:1.18.32'
         classpath 'com.badlogicgames.gdx:gdx-tools:1.5.4'
         classpath 'org.junit.jupiter:junit-jupiter:5.7.1'
         classpath 'org.mockito:mockito-core:4.2.0'
-
     }
 }
 
@@ -67,19 +72,21 @@ project(":desktop") {
     }
 }
 
-project(":ios") {
-    apply plugin: "java-library"
-    apply plugin: "robovm"
+if (findProject(':ios') != null) {
+    project(":ios") {
+        apply plugin: "java-library"
+        apply plugin: "robovm"
 
 
-    dependencies {
-        implementation project(":core")
-        api "com.mobidevelop.robovm:robovm-rt:$roboVMVersion"
-        api "com.mobidevelop.robovm:robovm-cocoatouch:$roboVMVersion"
-        api "com.badlogicgames.gdx:gdx-backend-robovm:$gdxVersion"
-        api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-ios"
-        compileOnly 'org.projectlombok:lombok:1.18.32'
-        annotationProcessor 'org.projectlombok:lombok:1.18.32'
+        dependencies {
+            implementation project(":core")
+            api "com.mobidevelop.robovm:robovm-rt:$roboVMVersion"
+            api "com.mobidevelop.robovm:robovm-cocoatouch:$roboVMVersion"
+            api "com.badlogicgames.gdx:gdx-backend-robovm:$gdxVersion"
+            api "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-ios"
+            compileOnly 'org.projectlombok:lombok:1.18.32'
+            annotationProcessor 'org.projectlombok:lombok:1.18.32'
+        }
     }
 }
 
@@ -126,19 +133,21 @@ project(":core") {
     }
 }
 
-project(":android") {
-    apply plugin: "com.android.application"
+if (findProject(':android') != null) {
+    project(":android") {
+        apply plugin: "com.android.application"
 
-    configurations { natives }
+        configurations { natives }
 
-    dependencies {
-        implementation project(":core")
-        api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
-        natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
-        natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
-        natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
-        natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
-        compileOnly 'org.projectlombok:lombok:1.18.32'
-        annotationProcessor 'org.projectlombok:lombok:1.18.32'
+        dependencies {
+            implementation project(":core")
+            api "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+            natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+            natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+            natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+            natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+            compileOnly 'org.projectlombok:lombok:1.18.32'
+            annotationProcessor 'org.projectlombok:lombok:1.18.32'
+        }
     }
 }

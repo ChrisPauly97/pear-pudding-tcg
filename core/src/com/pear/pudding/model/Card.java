@@ -3,12 +3,9 @@ package com.pear.pudding.model;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.assets.AssetManager;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -63,16 +60,9 @@ public class Card extends Actor {
     private boolean faceUp = false;
     private AssetManager manager;
     private Location currentLocation;
-    private static Texture borderTexture;
 
-    static {
-        // Create a simple 1x1 white pixel texture for drawing borders
-        Pixmap pixmap = new Pixmap(1, 1, Pixmap.Format.RGBA8888);
-        pixmap.setColor(Color.WHITE);
-        pixmap.fill();
-        borderTexture = new Texture(pixmap);
-        pixmap.dispose();
-    }
+    /** No-arg constructor for unit testing — does not initialize LibGDX resources. */
+    Card() {}
 
     // TODO set a min health of 0 for every unit to they can't go above it when getting healed
     public void takeDamage(int damage){
@@ -150,13 +140,13 @@ public class Card extends Actor {
             switch (card.getStatusEffect().getEffectType()) {
                 case HEAL:
                     card.health += card.getStatusEffect().getValue();
-                    break;
+                    return true;
                 case DAMAGE:
                     enemyCard.health -= card.getStatusEffect().getValue();
-                    break;
+                    return true;
                 case REMOVE:
                     enemyCard.setOutOfPlay(card.getStatusEffect().getValue());
-                    break;
+                    return true;
                 default:
                     return false;
             }
@@ -219,14 +209,8 @@ public class Card extends Actor {
             return;
         }
         this.attackCount--;
-
-        if (enemy.health <= 0) {
-            enemy.moveToDiscardPile();
-        } else {
-            this.health -= enemy.getAttack();
-            enemy.health -= getAttack();
-        }
-
+        this.health -= enemy.getAttack();
+        enemy.health -= getAttack();
         if (enemy.health <= 0) {
             enemy.moveToDiscardPile();
         }
@@ -278,9 +262,9 @@ public class Card extends Actor {
 
     public void move(float x, float y, Location location) {
         setPosition(x, y);
-        this.cardBack.setPosition(x, y);
-        this.cardBackground.setPosition(x, y);
-        this.cardCanPlayBackground.setPosition(x, y);
+        if (cardBack != null) this.cardBack.setPosition(x, y);
+        if (cardBackground != null) this.cardBackground.setPosition(x, y);
+        if (cardCanPlayBackground != null) this.cardCanPlayBackground.setPosition(x, y);
         this.currentLocation = location;
         switch (location) {
             case BOARD, HAND:
@@ -297,9 +281,9 @@ public class Card extends Actor {
 
     public void move(float x, float y, float w, float h) {
         setBounds(x, y, w, h);
-        this.cardBack.setBounds(x, y, w, h);
-        this.cardBackground.setBounds(x, y, w, h);
-        this.cardCanPlayBackground.setPosition(x, y);
+        if (cardBack != null) this.cardBack.setBounds(x, y, w, h);
+        if (cardBackground != null) this.cardBackground.setBounds(x, y, w, h);
+        if (cardCanPlayBackground != null) this.cardCanPlayBackground.setPosition(x, y);
         if (getImage() != null) {
             this.image.setBounds(getX(), getY(), getWidth(), getHeight());
         }

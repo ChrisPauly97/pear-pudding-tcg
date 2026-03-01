@@ -109,7 +109,7 @@ public class Board extends Deck {
         var targetSlot = nearestFreeSlot();
         if (targetSlot != -1) {
             this.cards[targetSlot] = targetCard;
-            var targetSlotPos = getSlotPositionAtIndex(nearestFreeSlot());
+            var targetSlotPos = getSlotPositionAtIndex(targetSlot);
             targetCard.move(targetSlotPos.x, targetSlotPos.y, Location.getEnum(this.getClass().getSimpleName()));
             return true;
         }
