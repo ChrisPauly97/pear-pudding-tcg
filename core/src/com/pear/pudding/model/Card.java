@@ -219,13 +219,8 @@ public class Card extends Actor {
             return;
         }
         this.attackCount--;
-
-        if (enemy.health <= 0) {
-            enemy.moveToDiscardPile();
-        } else {
-            this.health -= enemy.getAttack();
-            enemy.health -= getAttack();
-        }
+        this.health -= enemy.getAttack();
+        enemy.health -= getAttack();
 
         if (enemy.health <= 0) {
             enemy.moveToDiscardPile();
