@@ -2,6 +2,7 @@ package com.pear.pudding.model;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.math.Vector3;
+import com.pear.pudding.enums.Location;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -17,6 +18,30 @@ public class Board extends Deck {
     public Board(float x, float y, float width, float height) {
         super(x, y, width, height, NUMBER_OF_BOARD_SLOTS);
         Gdx.app.log("Board", Arrays.toString(getCards()));
+    }
+
+    public boolean handleEffect(int boardTargetSlot, Card attackingCard) {
+        var targetCard = getCardAtIndex(boardTargetSlot);
+        if (targetCard != null) {
+            switch (attackingCard.getStatusEffect().getEffectType()) {
+                case DAMAGE:
+                    targetCard.takeDamage(attackingCard.getStatusEffect().getValue());
+                    break;
+                case HEAL:
+                    targetCard.getHealing(attackingCard.getStatusEffect().getValue());
+                    break;
+                case REMOVE:
+                    targetCard.handleRemoveEffect(attackingCard.getStatusEffect().getValue());
+                    break;
+                case NONE:
+                    return false;
+            }
+            if(targetCard.getHealth() <= 0){
+                targetCard.moveToDiscardPile();
+            }
+            return true;
+        }
+        return false;
     }
 
     public void handleHover(Vector3 mouseCoords) {
@@ -37,7 +62,6 @@ public class Board extends Deck {
             }
             this.previousTargetSlot = targetSlot;
         } else {
-            Gdx.app.log("previous target slot and target slot when target not on board", previousTargetSlot + ", " + targetSlot);
             if (this.previousTargetSlot != -1) {
                 restoreSnapshot();
             }
@@ -63,6 +87,33 @@ public class Board extends Deck {
             }
         }
         return -1;
+    }
+
+    public int nearestFreeSlot() {
+        var nearestFreeSlotLeft = nearestFreeSlotFromMiddleOnLeft();
+        var nearestFreeSlotRight = nearestFreeSlotFromMiddleOnRight();
+        Gdx.app.log("Finding Nearest Slot ", nearestFreeSlotLeft + ", " + nearestFreeSlotRight);
+        if (getCardAtIndex(middleSlot()) == null) {
+            return middleSlot();
+        }
+        var distanceToMiddleFromLeft = calculateDistance(middleSlot(), nearestFreeSlotLeft);
+        var distanceToMiddleFromRight = calculateDistance(middleSlot(), nearestFreeSlotRight);
+        if (distanceToMiddleFromLeft < distanceToMiddleFromRight) {
+            return nearestFreeSlotLeft;
+        } else {
+            return nearestFreeSlotRight;
+        }
+    }
+
+    public boolean addCard(Card targetCard) {
+        var targetSlot = nearestFreeSlot();
+        if (targetSlot != -1) {
+            this.cards[targetSlot] = targetCard;
+            var targetSlotPos = getSlotPositionAtIndex(nearestFreeSlot());
+            targetCard.move(targetSlotPos.x, targetSlotPos.y, Location.getEnum(this.getClass().getSimpleName()));
+            return true;
+        }
+        return false;
     }
 
     public void rebalance(int targetSlot) {

@@ -129,6 +129,7 @@ public class LoadingScreen extends AbstractScreen {
         // Update the progress bar
         if (game.manager.update()) { // Load some, will return true if done loading
             if(game.manager.isFinished()) { // If the screen is touched after the game is done loading, go to the main menu screen
+                game.manager.load("data/arrow.pack.atlas", TextureAtlas.class);
                 game.setScreen(new MenuScreen(game));
             }
         }

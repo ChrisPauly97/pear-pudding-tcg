@@ -3,6 +3,7 @@ package com.pear.pudding.input;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.pear.pudding.model.Card;
 import com.pear.pudding.player.Player;
 
 public class EndTurnClickListener extends ClickListener {

@@ -22,12 +22,12 @@
 //    public static final AssetDescriptor<Skin> SKIN = new AssetDescriptor<Skin>("uiskin.json", Skin.class);
 //
 //    ////////// Textures //////////
-//    public static final AssetDescriptor<Texture> GHOST = new AssetDescriptor<>("ghost.png", Texture.class);
+//    public static final AssetDescriptor<Texture> GHOST = new AssetDescriptor<>("ghostnew.png", Texture.class);
 //    public static final AssetDescriptor<Texture> CARDBACK = new AssetDescriptor<>("cardback.jpg", Texture.class);
 //    public static final AssetDescriptor<Texture> CARD = new AssetDescriptor<>("card.png", Texture.class);
 //    public static final AssetDescriptor<Texture> BACKGROUND = new AssetDescriptor<>("background.png", Texture.class);
-//    public static final AssetDescriptor<Texture> HERO1 = new AssetDescriptor<>("ghost.png", Texture.class);
-//    public static final AssetDescriptor<Texture> HERO2 = new AssetDescriptor<>("ghost.png", Texture.class);
+//    public static final AssetDescriptor<Texture> HERO1 = new AssetDescriptor<>("ghostnew.png", Texture.class);
+//    public static final AssetDescriptor<Texture> HERO2 = new AssetDescriptor<>("ghostnew.png", Texture.class);
 ////        public static final AssetDescriptor<Texture> TEST_TEXTURE_BLOCK = new AssetDescriptor<>(
 ////                "graphics/block/sample.png", Texture.class);
 //

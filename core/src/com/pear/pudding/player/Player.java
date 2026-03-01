@@ -48,7 +48,7 @@ public class Player extends Actor {
         this.drawDeck = new DrawDeck(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER : WINDOW_HEIGHT - BUFFER - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT);
         this.healthPosition = new Vector2(WINDOW_WIDTH / 2, isPlayer1 ? BUFFER * 3 + CARD_HEIGHT : WINDOW_HEIGHT - CARD_HEIGHT - BUFFER);
         this.discardPile = new DiscardPile(WINDOW_WIDTH - 2 * CARD_WIDTH, isPlayer1 ? BUFFER * 2 + CARD_HEIGHT : WINDOW_HEIGHT - BUFFER * 2 - CARD_HEIGHT * 2, CARD_WIDTH, CARD_HEIGHT);
-        Texture heroTexture = manager.get("ghost.png", Texture.class);
+        Texture heroTexture = manager.get("ghostnew.png", Texture.class);
         Texture hero2Texture = manager.get("ghoul.png", Texture.class);
         hero = new Hero(isPlayer1 ? heroTexture : hero2Texture, WINDOW_WIDTH / 2, isPlayer1 ? (CARD_HEIGHT * 2) - BUFFER * 2 : WINDOW_HEIGHT - (CARD_HEIGHT * 2) + BUFFER * 2, isPlayer1 ? 0 : 180);
         if (!isPlayer1) {
@@ -73,10 +73,14 @@ public class Player extends Actor {
     }
 
     public void refreshBoard() {
-        for (Card s : getBoard().getCards()) {
-            if (s != null) {
-                s.setAttackCount(1);
-                s.setSummoningSick(false);
+        for (Card c : getBoard().getCards()) {
+            if (c != null) {
+                c.setOutOfPlay(c.getOutOfPlay() + 1);
+                if(c.getOutOfPlay() == 0){
+                    c.setFaceUp(true);
+                }
+                c.setAttackCount(1);
+                c.setSummoningSick(false);
             }
         }
     }
@@ -91,11 +95,14 @@ public class Player extends Actor {
         font.getData().markupEnabled = true;
         font.getData().setScale(1f);
         if (this.getHero().getHealth() <= 10) {
-            font.draw(batch, "[RED]" + this.getHero().getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
+            font.draw(batch, "[RED]" + this.getHero().getHealth(), this.getHealthPosition().x- BUFFER * 3, this.getHealthPosition().y);
         } else {
-            font.draw(batch, "[GREEN]" + this.getHero().getHealth(), this.getHealthPosition().x, this.getHealthPosition().y);
+            font.draw(batch, "[GREEN]" + this.getHero().getHealth(), this.getHealthPosition().x - BUFFER * 3, this.getHealthPosition().y);
         }
         font.draw(batch, "[WHITE]" + this.getCurrentMana() + "/" + this.getTotalMana(), this.getHealthPosition().x + BUFFER * 3 / 2, this.getHealthPosition().y);
+        for(int i = 0; i < currentMana; i++){
+            font.draw(batch, "[BLUE] *", WINDOW_WIDTH - CARD_WIDTH*2 + (BUFFER * i) , this.getHealthPosition().y);
+        }
         getHero().draw(batch);
         getDrawDeck().draw(batch);
         getBoard().draw(batch);

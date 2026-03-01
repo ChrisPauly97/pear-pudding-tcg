@@ -9,6 +9,8 @@ public class PackSkins {
 
     public static void main(String[] args) {
         TexturePacker.Settings s = new TexturePacker.Settings();
-        TexturePacker.process(s, "assets/workfiles/finished", "assets/data", "loading.pack");
+//        TexturePacker.process(s, "assets/workfiles/finished", "assets/data", "loading.pack");
+        TexturePacker.process(s, "assets/workfiles/arrow", "assets/data", "arrow.pack");
+
     }
 }
