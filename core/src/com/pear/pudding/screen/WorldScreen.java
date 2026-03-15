@@ -52,10 +52,10 @@ public class WorldScreen implements Screen, InputProcessor {
     private static final float TRACKING_AUTO_BATTLE_RANGE = 32f;  // Auto-battle when tracking enemy gets this close
     private static final float CAMERA_LERP = 5f;
     private static final float FOOTSTEP_INTERVAL = 1.0f;
-    private static final float JUMP_VELOCITY = 280f;
+    private static final float JUMP_VELOCITY = 220f;  // Jump high enough to clear 2-height walls
     private static final float GRAVITY = -600f;
     private static final float WALL_HEIGHT = 24f;
-    private static final int CLIMBABLE_HEIGHT = 1;  // Max wall height you can walk onto without jumping
+    private static final int CLIMBABLE_HEIGHT = 0;  // Must jump to get on any wall
 
     // Isometric rendering constants
     private static final int ISO_TW     = 64;   // tile diamond width
@@ -267,20 +267,41 @@ public class WorldScreen implements Screen, InputProcessor {
             return;
         }
 
-        // Test movement at four corners
-        float[] testPoints = {
-            playerX - PLAYER_RADIUS, playerY - PLAYER_RADIUS,
-            playerX + PLAYER_RADIUS, playerY - PLAYER_RADIUS,
-            playerX - PLAYER_RADIUS, playerY + PLAYER_RADIUS,
-            playerX + PLAYER_RADIUS, playerY + PLAYER_RADIUS
-        };
+        // Test movement with circular collision (8 points around player radius)
+        float newPlayerX = playerX + dx;
+        float newPlayerY = playerY + dy;
 
-        for (int i = 0; i < testPoints.length; i += 2) {
-            float newX = testPoints[i] + dx;
-            float newY = testPoints[i + 1] + dy;
-            byte wallHeight = worldMap.getWallHeight(newX, newY);
-            // Block movement if wall is too tall to climb
-            if (wallHeight > CLIMBABLE_HEIGHT) return;
+        // Get player's tile coordinates and depth
+        int playerTileX = (int) (playerX / WorldMap.TILE_SIZE);
+        int playerTileY = (int) (playerY / WorldMap.TILE_SIZE);
+        int playerDepth = playerTileX + playerTileY;
+
+        // Test 8 points around the player in a circle
+        int numTestPoints = 8;
+        for (int i = 0; i < numTestPoints; i++) {
+            float angle = (float) (2 * Math.PI * i / numTestPoints);
+            float testX = newPlayerX + PLAYER_RADIUS * (float) Math.cos(angle);
+            float testY = newPlayerY + PLAYER_RADIUS * (float) Math.sin(angle);
+
+            int testTileX = (int) (testX / WorldMap.TILE_SIZE);
+            int testTileY = (int) (testY / WorldMap.TILE_SIZE);
+            int testDepth = testTileX + testTileY;
+
+            byte wallHeight = worldMap.getWallHeight(testX, testY);
+            // Only collide with walls that are at same depth or in front
+            // (player shouldn't collide with walls they're behind visually)
+            if (wallHeight > CLIMBABLE_HEIGHT && testDepth >= playerDepth) {
+                return;
+            }
+        }
+
+        // Also test the center point
+        int centerTileX = (int) (newPlayerX / WorldMap.TILE_SIZE);
+        int centerTileY = (int) (newPlayerY / WorldMap.TILE_SIZE);
+        int centerDepth = centerTileX + centerTileY;
+        byte centerWallHeight = worldMap.getWallHeight(newPlayerX, newPlayerY);
+        if (centerWallHeight > CLIMBABLE_HEIGHT && centerDepth >= playerDepth) {
+            return;
         }
 
         // Update player ground height based on new position

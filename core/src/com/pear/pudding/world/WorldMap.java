@@ -300,22 +300,8 @@ public class WorldMap {
                     continue;
                 }
 
-                if (inHeightsSection) {
-                    // Parse height entries: "x,y,height"
-                    String[] parts = line.split(",");
-                    if (parts.length == 3) {
-                        try {
-                            int x = Integer.parseInt(parts[0].trim());
-                            int y = Integer.parseInt(parts[1].trim());
-                            byte h = Byte.parseByte(parts[2].trim());
-                            if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
-                                heights[y][x] = h;
-                            }
-                        } catch (NumberFormatException e) {
-                            // Skip invalid height lines
-                        }
-                    }
-                } else if (line.startsWith("SPAWN ")) {
+                // Check for entity/spawn commands BEFORE heights section (heights check must be last)
+                if (line.startsWith("SPAWN ")) {
                     String[] parts = line.split(" ");
                     if (parts.length >= 3) {
                         playerSpawnX = Integer.parseInt(parts[1]);
@@ -340,6 +326,21 @@ public class WorldMap {
                             cardIds.add(cardId.trim());
                         }
                         chests.add(new Chest("chest_" + System.currentTimeMillis() + "_" + i, x, y, cardIds));
+                    }
+                } else if (inHeightsSection) {
+                    // Parse height entries: "x,y,height"
+                    String[] parts = line.split(",");
+                    if (parts.length == 3) {
+                        try {
+                            int x = Integer.parseInt(parts[0].trim());
+                            int y = Integer.parseInt(parts[1].trim());
+                            byte h = Byte.parseByte(parts[2].trim());
+                            if (x >= 0 && x < MAP_WIDTH && y >= 0 && y < MAP_HEIGHT) {
+                                heights[y][x] = h;
+                            }
+                        } catch (NumberFormatException e) {
+                            // Skip invalid height lines
+                        }
                     }
                 }
             }
