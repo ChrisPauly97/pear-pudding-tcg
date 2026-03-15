@@ -514,9 +514,11 @@ public class WorldScreen implements Screen, InputProcessor {
             float shadowHeight = 8f * shadowScale;    // ~8-3px tall at ground level
 
             // Position shadow on ground plane, directly below player
-            // In iso space, shadow at player's base position
+            // Shadow stays with player sprite: isoY - 24 (head) to isoY + 24 (feet)
+            // Shadow should be at feet level
+            float visualOffsetY = playerZ * 0.5f;  // Same offset as player sprite
             float shadowIsoX = isoX - shadowWidth;     // Left edge of bounding box
-            float shadowIsoY = isoY;                   // At player's iso position
+            float shadowIsoY = isoY + 24f + visualOffsetY;  // At player's feet with jump offset
 
             shapeRenderer.setColor(0.05f, 0.1f, 0.05f, shadowAlpha);
             // Draw shadow as a small ellipse with proper iso proportions
