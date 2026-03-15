@@ -241,7 +241,8 @@ public class PearPudding implements Screen, InputProcessor {
             // Execute AI actions if it's AI's turn
             executeAITurn();
 
-            // Render game using GameRenderer
+            // Update animations and then render game using GameRenderer
+            gameRenderer.update(delta);
             Batch batch = stage.getBatch();
             batch.setProjectionMatrix(camera.combined);
             gameRenderer.render(batch);

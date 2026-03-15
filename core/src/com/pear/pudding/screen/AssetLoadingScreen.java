@@ -29,9 +29,15 @@ public class AssetLoadingScreen implements Screen {
         manager.setLoader(com.badlogic.gdx.graphics.g2d.BitmapFont.class,
             new FreetypeFontLoader(new com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver()));
 
-        // UI
+        // UI only - menu needs this immediately
         manager.load("uiskin.json", Skin.class);
+    }
 
+    /**
+     * Load world assets in background (called when entering play).
+     * This keeps menu load fast by deferring non-essential assets.
+     */
+    public static void loadWorldAssets(AssetManager manager) {
         // World textures: grass variants
         for (int i = 0; i < 16; i++) {
             manager.load("grass" + i + ".png", com.badlogic.gdx.graphics.Texture.class);

@@ -61,7 +61,6 @@ public class ChestOpenScreen implements Screen {
 
     private void createUI() {
         try {
-            game.manager.finishLoading();
             Skin skin = game.manager.get("uiskin.json", Skin.class);
 
             try {

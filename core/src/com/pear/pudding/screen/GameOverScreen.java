@@ -4,10 +4,13 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
@@ -53,10 +56,16 @@ public class GameOverScreen implements Screen {
         mainTable.setFillParent(true);
         mainTable.align(Align.center);
 
-        // Add title
-        BitmapFont font = skin.getFont("default");
+        // Create title label with animation
         boolean playerWon = winner.equals("You") || winner.startsWith("You cleared");
         String titleText = playerWon ? (winner.startsWith("You cleared") ? winner : "YOU WIN!") : "YOU LOSE!";
+
+        Label.LabelStyle titleStyle = new Label.LabelStyle(skin.get(Label.LabelStyle.class));
+        titleStyle.fontColor = playerWon ? new Color(1, 0.85f, 0.1f, 1) : new Color(0.9f, 0.2f, 0.2f, 1);
+        Label titleLabel = new Label(titleText, titleStyle);
+        titleLabel.setFontScale(2f);
+        titleLabel.getColor().a = 0f;
+        titleLabel.addAction(Actions.fadeIn(0.5f));
 
         TextButton playAgainButton = new TextButton("Play Again", skin);
         TextButton menuButton = new TextButton("Back to Menu", skin);
@@ -75,7 +84,14 @@ public class GameOverScreen implements Screen {
             }
         });
 
-        mainTable.add(titleText).padBottom(50);
+        // Animate button entrance with staggered delays
+        playAgainButton.getColor().a = 0f;
+        playAgainButton.addAction(Actions.sequence(Actions.delay(0.4f), Actions.fadeIn(0.35f)));
+
+        menuButton.getColor().a = 0f;
+        menuButton.addAction(Actions.sequence(Actions.delay(0.55f), Actions.fadeIn(0.35f)));
+
+        mainTable.add(titleLabel).padBottom(50);
         mainTable.row();
         mainTable.add(playAgainButton).width(WINDOW_WIDTH / 3).height(WINDOW_HEIGHT / 6);
         mainTable.row();
@@ -89,7 +105,7 @@ public class GameOverScreen implements Screen {
         Gdx.gl.glClearColor(0.1f, 0.12f, 0.16f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        stage.act();
+        stage.act(delta);
         stage.draw();
     }
 

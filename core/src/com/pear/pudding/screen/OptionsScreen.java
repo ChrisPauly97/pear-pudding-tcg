@@ -35,8 +35,6 @@ public class OptionsScreen implements Screen {
     public OptionsScreen(MyGame game) {
         this.manager = game.manager;
         this.game = game;
-        manager.load("uiskin.json", Skin.class);
-        manager.finishLoading();
         skin = manager.get("uiskin.json", Skin.class);
         batch = new SpriteBatch();
         camera = new OrthographicCamera(WINDOW_WIDTH, WINDOW_HEIGHT);

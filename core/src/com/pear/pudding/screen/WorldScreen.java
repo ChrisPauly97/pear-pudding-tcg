@@ -15,6 +15,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pear.pudding.MyGame;
 import com.pear.pudding.input.InputController;
 import com.pear.pudding.world.Chest;
+import com.pear.pudding.world.Door;
 import com.pear.pudding.world.EnemyNPC;
 import com.pear.pudding.world.WorldMap;
 
@@ -31,6 +32,8 @@ import static com.pear.pudding.game.data.GameConstants.WINDOW_WIDTH;
 public class WorldScreen implements Screen, InputProcessor {
     private final MyGame game;
     private final WorldMap worldMap;
+    private final WorldScreen parentScreen;
+    private final String mapName;
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final SpriteBatch hudBatch;
@@ -88,14 +91,20 @@ public class WorldScreen implements Screen, InputProcessor {
     private final HashMap<Long, Float> trailTiles = new HashMap<>();  // packed tile coord → intensity [0,1]
     private long lastPlayerTile = -1L;
 
+    // HUD camera (reused every frame to avoid allocation)
+    private OrthographicCamera hudCamera;
+
     // Constants
     private static final float TRAIL_FADE_RATE = 0.22f;  // fades in ~4.5 seconds
     private static final float TRAIL_MAX_DARKEN = 0.15f; // darkens to ~85% brightness at peak (subtle)
     private static final float TRAIL_INITIAL_INTENSITY = 0.6f; // reduced from 1.0
 
-    public WorldScreen(MyGame game) {
+    // Primary constructor with map name and parent screen
+    public WorldScreen(MyGame game, String mapName, WorldScreen parentScreen) {
         this.game = game;
-        this.worldMap = new WorldMap();
+        this.mapName = mapName;
+        this.parentScreen = parentScreen;
+        this.worldMap = new WorldMap(mapName);
 
         if (worldMap.hasPlayerSpawn()) {
             playerX = worldMap.getPlayerSpawnX() * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2;
@@ -115,6 +124,11 @@ public class WorldScreen implements Screen, InputProcessor {
         worldBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
         font = null;
+    }
+
+    // Back-compat constructor: main entry from menu
+    public WorldScreen(MyGame game) {
+        this(game, "main", null);
     }
 
     // --- Iso coordinate helpers ---
@@ -148,36 +162,49 @@ public class WorldScreen implements Screen, InputProcessor {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
+        // Ensure world assets are queued for loading and fully loaded
+        AssetLoadingScreen.loadWorldAssets(game.manager);
+        // Process asset loading until world assets are ready
+        while (!game.manager.update() && !game.manager.contains("grass0.png", Texture.class)) {
+            // Keep loading until grass0.png is available
+        }
         loadTextures();
+        hudCamera = new OrthographicCamera(1800, 1000);
+        hudCamera.position.set(900, 500, 0);
+        hudCamera.update();
     }
 
     private void loadTextures() {
         if (grassTextures == null) {
-            grassTextures = new Texture[16];
-            for (int i = 0; i < 16; i++) {
-                grassTextures[i] = game.manager.get("grass" + i + ".png", Texture.class);
-                grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            try {
+                grassTextures = new Texture[16];
+                for (int i = 0; i < 16; i++) {
+                    grassTextures[i] = game.manager.get("grass" + i + ".png", Texture.class);
+                    grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                }
+                wallTextures = new Texture[8];
+                for (int i = 0; i < 8; i++) {
+                    wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
+                    wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                }
+                brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
+                brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
+                brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallLeft = game.manager.get("wallbrick_left.png", Texture.class);
+                brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallRight = game.manager.get("wallbrick_right.png", Texture.class);
+                brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                playerTexture = game.manager.get("player.png", Texture.class);
+                playerTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                enemyTexture = game.manager.get("enemy.png", Texture.class);
+                enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                chestTexture = game.manager.get("chest.png", Texture.class);
+                chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                footstepSound = game.manager.get("freesound_community-running-in-grass-6237.mp3", Sound.class);
+            } catch (Exception e) {
+                // Assets not ready yet, will retry next frame
             }
-            wallTextures = new Texture[8];
-            for (int i = 0; i < 8; i++) {
-                wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
-                wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            }
-            brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
-            brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
-            brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            brickWallLeft = game.manager.get("wallbrick_left.png", Texture.class);
-            brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            brickWallRight = game.manager.get("wallbrick_right.png", Texture.class);
-            brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            playerTexture = game.manager.get("player.png", Texture.class);
-            playerTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            enemyTexture = game.manager.get("enemy.png", Texture.class);
-            enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            chestTexture = game.manager.get("chest.png", Texture.class);
-            chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            footstepSound = game.manager.get("freesound_community-running-in-grass-6237.mp3", Sound.class);
         }
     }
 
@@ -319,46 +346,39 @@ public class WorldScreen implements Screen, InputProcessor {
             return;
         }
 
-        // Test movement with circular collision (8 points around player radius)
         float newPlayerX = playerX + dx;
         float newPlayerY = playerY + dy;
 
-        // Get player's tile coordinates and depth
         int playerTileX = (int) (playerX / WorldMap.TILE_SIZE);
         int playerTileY = (int) (playerY / WorldMap.TILE_SIZE);
         int playerDepth = playerTileX + playerTileY;
 
-        // Test 8 points around the player in a circle
-        int numTestPoints = 8;
-        for (int i = 0; i < numTestPoints; i++) {
-            float angle = (float) (2 * Math.PI * i / numTestPoints);
-            float testX = newPlayerX + PLAYER_RADIUS * (float) Math.cos(angle);
-            float testY = newPlayerY + PLAYER_RADIUS * (float) Math.sin(angle);
-
-            int testTileX = (int) (testX / WorldMap.TILE_SIZE);
-            int testTileY = (int) (testY / WorldMap.TILE_SIZE);
-            int testDepth = testTileX + testTileY;
-
-            byte wallHeight = worldMap.getWallHeight(testX, testY);
-            float wallTopHeight = wallHeight * WALL_FACE_H;
-
-            // Only collide if:
-            // 1. Wall is too tall to climb AND
-            // 2. Wall is strictly in front of player visually AND
-            // 3. Player is below the top surface of the wall (not standing on it)
-            if (wallHeight > CLIMBABLE_HEIGHT && testDepth > playerDepth && groundZ < wallTopHeight) {
-                return;  // Collision - wall blocks movement
-            }
+        // Test only the leading face in the direction of movement.
+        // Diagonal 8-point circles extend perpendicular to movement and cause false
+        // collisions when sliding along wall edges (the NE/SE points hit the wall tile
+        // even though you're moving parallel to it).
+        // Use 3 collinear points along the forward face with a small safe spread (4px)
+        // that won't cross a tile boundary (TILE_SIZE=32, spread<<16).
+        final float SPREAD = 4f;
+        float[] testXs, testYs;
+        if (dx != 0) {
+            float fwd = Math.signum(dx) * PLAYER_RADIUS;
+            testXs = new float[]{ newPlayerX + fwd, newPlayerX + fwd, newPlayerX + fwd };
+            testYs = new float[]{ newPlayerY,        newPlayerY + SPREAD, newPlayerY - SPREAD };
+        } else {
+            float fwd = Math.signum(dy) * PLAYER_RADIUS;
+            testXs = new float[]{ newPlayerX,        newPlayerX + SPREAD, newPlayerX - SPREAD };
+            testYs = new float[]{ newPlayerY + fwd,  newPlayerY + fwd,   newPlayerY + fwd   };
         }
 
-        // Also test the center point
-        int centerTileX = (int) (newPlayerX / WorldMap.TILE_SIZE);
-        int centerTileY = (int) (newPlayerY / WorldMap.TILE_SIZE);
-        int centerDepth = centerTileX + centerTileY;
-        byte centerWallHeight = worldMap.getWallHeight(newPlayerX, newPlayerY);
-        float centerWallTopHeight = centerWallHeight * WALL_FACE_H;
-        if (centerWallHeight > CLIMBABLE_HEIGHT && centerDepth > playerDepth && groundZ < centerWallTopHeight) {
-            return;  // Collision - wall blocks movement
+        for (int i = 0; i < 3; i++) {
+            int testTileX = (int) (testXs[i] / WorldMap.TILE_SIZE);
+            int testTileY = (int) (testYs[i] / WorldMap.TILE_SIZE);
+            int testDepth = testTileX + testTileY;
+            byte wallHeight = worldMap.getWallHeight(testXs[i], testYs[i]);
+            if (wallHeight > CLIMBABLE_HEIGHT && testDepth > playerDepth && groundZ < wallHeight * WALL_FACE_H) {
+                return;
+            }
         }
 
         // Update player ground height based on new position
@@ -444,6 +464,7 @@ public class WorldScreen implements Screen, InputProcessor {
         // --- Entity rendering: Y-sorted so closer entities overdraw farther ones ---
         EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
         Chest nearbyChest = worldMap.findNearbChest(playerX, playerY, INTERACT_RANGE);
+        Door nearbyDoor = worldMap.findNearbyDoor(playerX, playerY, INTERACT_RANGE);
 
         // Reuse pooled collection to avoid per-frame allocation
         entitiesPool.clear();
@@ -453,6 +474,9 @@ public class WorldScreen implements Screen, InputProcessor {
         }
         for (Chest c : worldMap.getChests()) {
             if (!c.opened) entitiesPool.add(new float[]{c.x, c.y, 2}); // 2 = chest
+        }
+        for (Door d : worldMap.getDoors()) {
+            entitiesPool.add(new float[]{d.x, d.y, 3}); // 3 = door
         }
         // Sort descending by isoY: furthest (highest isoY) drawn first
         entitiesPool.sort((a, b) -> Float.compare(toIsoY(b[0], b[1]), toIsoY(a[0], a[1])));
@@ -487,9 +511,25 @@ public class WorldScreen implements Screen, InputProcessor {
                     worldBatch.draw(chestTexture, isoX - 24, isoY - 20, 48, 40);
                 }
             }
+            // Door rendering (type 3) done in ShapeRenderer section below
         }
 
         worldBatch.end();
+
+        // Door rendering with ShapeRenderer
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (Door d : worldMap.getDoors()) {
+            float isoX = toIsoX(d.x, d.y);
+            float isoY = toIsoY(d.x, d.y);
+            // Draw door as a brown rectangle (base)
+            shapeRenderer.setColor(0.6f, 0.4f, 0.2f, 1); // Brown
+            shapeRenderer.rect(isoX - 16, isoY - 12, 32, 24);
+            // Draw darker outline (arch)
+            shapeRenderer.setColor(0.4f, 0.2f, 0.05f, 1); // Dark brown
+            shapeRenderer.rect(isoX - 18, isoY - 14, 36, 28);
+        }
+        shapeRenderer.end();
 
         // Draw shadows and interaction prompts with ShapeRenderer
         shapeRenderer.setProjectionMatrix(camera.combined);
@@ -536,6 +576,13 @@ public class WorldScreen implements Screen, InputProcessor {
             shapeRenderer.rect(cx - 16, cy - 1, 32, 20);
             shapeRenderer.setColor(1, 1, 0.8f, 1);
             shapeRenderer.rect(cx - 15, cy, 30, 18);
+        } else if (nearbyDoor != null) {
+            float dx = toIsoX(nearbyDoor.x, nearbyDoor.y);
+            float dy = toIsoY(nearbyDoor.x, nearbyDoor.y) + 12f; // Above door
+            shapeRenderer.setColor(0.1f, 0.1f, 0.1f, 1);
+            shapeRenderer.rect(dx - 16, dy - 1, 32, 20);
+            shapeRenderer.setColor(1, 1, 0.8f, 1);
+            shapeRenderer.rect(dx - 15, dy, 30, 18);
         }
 
         shapeRenderer.end();
@@ -543,7 +590,7 @@ public class WorldScreen implements Screen, InputProcessor {
         // --- HUD (screen-space) ---
         ensureFontLoaded();
         if (font != null) {
-            hudBatch.setProjectionMatrix(new OrthographicCamera(1800, 1000).combined);
+            hudBatch.setProjectionMatrix(hudCamera.combined);
             hudBatch.begin();
 
             font.draw(hudBatch, "WASD/Arrows: move   Space: jump   E: battle", 20, 980);
@@ -553,6 +600,12 @@ public class WorldScreen implements Screen, InputProcessor {
                 if (e.alive) aliveCount++;
             }
             font.draw(hudBatch, "Enemies remaining: " + aliveCount, 20, 920);
+
+            int closedChests = 0;
+            for (Chest c : worldMap.getChests()) {
+                if (!c.opened) closedChests++;
+            }
+            font.draw(hudBatch, "Chests remaining: " + closedChests, 20, 860);
 
             // [E] label projected to HUD space
             if (nearby != null) {
@@ -568,6 +621,14 @@ public class WorldScreen implements Screen, InputProcessor {
                 float isoCy = toIsoY(nearbyChest.x, nearbyChest.y) + 30f; // Above chest sprite
                 float hudX = isoCx - camera.position.x + 900f;
                 float hudY = isoCy - camera.position.y + 500f;
+                font.setColor(0.1f, 0.1f, 0.1f, 1);
+                font.draw(hudBatch, "[E]", hudX - 13f, hudY);
+                font.setColor(1, 1, 1, 1);
+            } else if (nearbyDoor != null) {
+                float isoDx = toIsoX(nearbyDoor.x, nearbyDoor.y);
+                float isoDy = toIsoY(nearbyDoor.x, nearbyDoor.y) + 30f; // Above door
+                float hudX = isoDx - camera.position.x + 900f;
+                float hudY = isoDy - camera.position.y + 500f;
                 font.setColor(0.1f, 0.1f, 0.1f, 1);
                 font.draw(hudBatch, "[E]", hudX - 13f, hudY);
                 font.setColor(1, 1, 1, 1);
@@ -611,6 +672,20 @@ public class WorldScreen implements Screen, InputProcessor {
         EnemyNPC enemy = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
         if (enemy != null) {
             game.setScreen(new PearPudding(game, game.manager, this, enemy));
+            return;
+        }
+
+        Door door = worldMap.findNearbyDoor(playerX, playerY, INTERACT_RANGE);
+        if (door != null) {
+            if (door.targetMapName == null || door.targetMapName.isEmpty()) {
+                // Exit sub-area → return to parent
+                if (parentScreen != null) {
+                    game.setScreen(parentScreen);
+                }
+            } else {
+                // Enter new map as a sub-area
+                game.setScreen(new WorldScreen(game, door.targetMapName, this));
+            }
         }
     }
 

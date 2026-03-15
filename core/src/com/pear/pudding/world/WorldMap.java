@@ -19,18 +19,43 @@ public class WorldMap {
     private final byte[][] heights;  // Wall height in levels (0 = no wall, 1+ = height)
     private final List<EnemyNPC> enemies;
     private final List<Chest> chests;
+    private final List<Door> doors;
     private int playerSpawnX = -1;  // -1 means not set
     private int playerSpawnY = -1;
+    private String mapName;
 
     private static final Random WORLD_RAND = new Random(12345);  // Seeded for reproducibility
 
+    // Backward-compat no-arg constructor
     public WorldMap() {
+        this("main");
+    }
+
+    public WorldMap(String mapName) {
+        this.mapName = mapName;
         tiles = new byte[MAP_HEIGHT][MAP_WIDTH];
         heights = new byte[MAP_HEIGHT][MAP_WIDTH];
         enemies = new ArrayList<>();
         chests = new ArrayList<>();
+        doors = new ArrayList<>();
 
-        FileHandle fh = Gdx.files.local("map.txt");
+        // Ensure maps directory exists
+        FileHandle mapsDir = Gdx.files.local("maps/");
+        if (!mapsDir.exists()) {
+            mapsDir.mkdirs();
+        }
+
+        FileHandle fh = Gdx.files.local("maps/" + mapName + ".txt");
+
+        // Migration: if main map doesn't exist but old map.txt does, copy it
+        if (!fh.exists() && mapName.equals("main")) {
+            FileHandle oldMapFile = Gdx.files.local("map.txt");
+            if (oldMapFile.exists()) {
+                String content = oldMapFile.readString();
+                fh.writeString(content, false);
+            }
+        }
+
         if (fh.exists()) {
             loadFromFile(fh);
         } else {
@@ -198,6 +223,27 @@ public class WorldMap {
         return chests;
     }
 
+    public Door findNearbyDoor(float px, float py, float range) {
+        for (Door door : doors) {
+            if (door.distanceTo(px, py) <= range) {
+                return door;
+            }
+        }
+        return null;
+    }
+
+    public List<Door> getDoors() {
+        return doors;
+    }
+
+    public void addDoor(Door door) {
+        doors.add(door);
+    }
+
+    public void removeDoor(Door door) {
+        doors.remove(door);
+    }
+
     public void setTile(int tx, int ty, byte value) {
         if (tx >= 0 && tx < MAP_WIDTH && ty >= 0 && ty < MAP_HEIGHT) {
             tiles[ty][tx] = value;
@@ -250,6 +296,21 @@ public class WorldMap {
         playerSpawnY = -1;
         enemies.clear();
         chests.clear();
+        doors.clear();
+    }
+
+    public static List<String> listMapNames() {
+        List<String> names = new ArrayList<>();
+        FileHandle mapsDir = Gdx.files.local("maps/");
+        if (!mapsDir.exists()) {
+            mapsDir.mkdirs();
+        }
+        for (FileHandle file : mapsDir.list()) {
+            if (file.name().endsWith(".txt")) {
+                names.add(file.name().replace(".txt", ""));
+            }
+        }
+        return names;
     }
 
     public void saveToFile(FileHandle fh) {
@@ -292,6 +353,11 @@ public class WorldMap {
             sb.append("CHEST ").append((int) chest.x).append(" ").append((int) chest.y).append(" ").append(cardIds).append("\n");
         }
 
+        for (Door door : doors) {
+            String target = (door.targetMapName == null || door.targetMapName.isEmpty()) ? "__exit__" : door.targetMapName;
+            sb.append("DOOR ").append((int) door.x).append(" ").append((int) door.y).append(" ").append(target).append("\n");
+        }
+
         fh.writeString(sb.toString(), false);
     }
 
@@ -319,6 +385,7 @@ public class WorldMap {
             playerSpawnY = -1;
             enemies.clear();
             chests.clear();
+            doors.clear();
 
             boolean inHeightsSection = false;
             for (int i = MAP_HEIGHT + 1; i < lines.length; i++) {
@@ -356,6 +423,17 @@ public class WorldMap {
                             cardIds.add(cardId.trim());
                         }
                         chests.add(new Chest("chest_" + System.currentTimeMillis() + "_" + i, x, y, cardIds));
+                    }
+                } else if (line.startsWith("DOOR ")) {
+                    String[] parts = line.split(" ");
+                    if (parts.length >= 4) {
+                        float x = Float.parseFloat(parts[1]);
+                        float y = Float.parseFloat(parts[2]);
+                        String target = parts[3];
+                        if (target.equals("__exit__")) {
+                            target = "";
+                        }
+                        doors.add(new Door("door_" + System.currentTimeMillis() + "_" + i, x, y, target));
                     }
                 } else if (inHeightsSection) {
                     // Parse height entries: "x,y,height"

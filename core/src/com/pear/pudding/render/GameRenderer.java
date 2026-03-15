@@ -21,6 +21,8 @@ public class GameRenderer implements GameEventListener {
     private BitmapFont font;
     private boolean fontLoaded = false;
     private final com.badlogic.gdx.utils.ObjectMap<String, com.badlogic.gdx.graphics.Texture> cardTextures = new com.badlogic.gdx.utils.ObjectMap<>();
+    private final com.badlogic.gdx.utils.ObjectMap<String, Float> cardPlayTimers = new com.badlogic.gdx.utils.ObjectMap<>();
+    private static final float CARD_PLAY_ANIM_DURATION = 0.5f;
 
     public GameRenderer(GameState gameState, UIState uiState, AssetManager assetManager) {
         this.gameState = gameState;
@@ -292,27 +294,42 @@ public class GameRenderer implements GameEventListener {
     private void renderCard(Batch batch, CardInstance card, float x, float y, float w, float h, Color outlineColor) {
         String templateId = card.getTemplateId();
 
+        // Apply card play animation if present
+        float animScale = 1f, animAlpha = 1f;
+        Float timerVal = cardPlayTimers.get(card.getInstanceId(), null);
+        if (timerVal != null) {
+            float progress = timerVal / CARD_PLAY_ANIM_DURATION;
+            animScale = 0.3f + progress * 0.7f;
+            animAlpha = progress;
+        }
+
+        // Center the scaled card
+        float drawX = x + w * (1 - animScale) / 2f;
+        float drawY = y + h * (1 - animScale) / 2f;
+        float drawW = w * animScale;
+        float drawH = h * animScale;
+
         // Try to use card texture, fall back to colored rectangle
         com.badlogic.gdx.graphics.Texture cardTexture = cardTextures.get(templateId);
         if (cardTexture != null) {
-            batch.setColor(Color.WHITE);
-            batch.draw(cardTexture, x, y, w, h);
+            batch.setColor(1, 1, 1, animAlpha);
+            batch.draw(cardTexture, drawX, drawY, drawW, drawH);
         } else {
             // Fallback: color code cards by type
             Color cardColor = getCardColor(templateId);
-            batch.setColor(cardColor);
-            batch.draw(RenderConstants.getPixelTexture(), x, y, w, h);
-            batch.setColor(Color.WHITE);
-            batch.draw(RenderConstants.getPixelTexture(), x, y + h - 8, w, 2);  // Top border
+            batch.setColor(cardColor.r, cardColor.g, cardColor.b, animAlpha);
+            batch.draw(RenderConstants.getPixelTexture(), drawX, drawY, drawW, drawH);
+            batch.setColor(1, 1, 1, animAlpha);
+            batch.draw(RenderConstants.getPixelTexture(), drawX, drawY + drawH - 8 * animScale, drawW, 2 * animScale);  // Top border
         }
 
-        // Draw colored outline based on context
-        if (outlineColor != null) {
+        // Draw colored outline based on context (only if not animating or at full opacity)
+        if (outlineColor != null && animAlpha >= 0.95f) {
             batch.setColor(outlineColor);
-            batch.draw(RenderConstants.getPixelTexture(), x, y, w, 3);  // Bottom
-            batch.draw(RenderConstants.getPixelTexture(), x, y + h - 3, w, 3);  // Top
-            batch.draw(RenderConstants.getPixelTexture(), x, y, 3, h);  // Left
-            batch.draw(RenderConstants.getPixelTexture(), x + w - 3, y, 3, h);  // Right
+            batch.draw(RenderConstants.getPixelTexture(), drawX, drawY, drawW, 3);  // Bottom
+            batch.draw(RenderConstants.getPixelTexture(), drawX, drawY + drawH - 3, drawW, 3);  // Top
+            batch.draw(RenderConstants.getPixelTexture(), drawX, drawY, 3, drawH);  // Left
+            batch.draw(RenderConstants.getPixelTexture(), drawX + drawW - 3, drawY, 3, drawH);  // Right
         }
 
         // Draw card stats on top
@@ -325,28 +342,28 @@ public class GameRenderer implements GameEventListener {
 
                 // Card name (capitalize first letter)
                 String name = templateId.substring(0, 1).toUpperCase() + templateId.substring(1);
-                batch.setColor(Color.WHITE);
-                font.draw(batch, name, x + 8f, y + h - 20f);
+                batch.setColor(1, 1, 1, animAlpha);
+                font.draw(batch, name, drawX + 8f, drawY + drawH - 20f);
 
                 // Cost at top left (yellow)
-                batch.setColor(Color.YELLOW);
-                font.draw(batch, "Cost: " + cost, x + 8f, y + h - 35f);
+                batch.setColor(1, 1, 0, animAlpha);
+                font.draw(batch, "Cost: " + cost, drawX + 8f, drawY + drawH - 35f);
 
                 // Attack at bottom left (red)
-                batch.setColor(Color.RED);
-                font.draw(batch, "ATK: " + attack, x + 8f, y + 15f);
+                batch.setColor(1, 0, 0, animAlpha);
+                font.draw(batch, "ATK: " + attack, drawX + 8f, drawY + 15f);
 
                 // Health at bottom right (green)
-                batch.setColor(Color.GREEN);
-                font.draw(batch, "HP: " + health, x + w - 50f, y + 15f);
+                batch.setColor(0, 1, 0, animAlpha);
+                font.draw(batch, "HP: " + health, drawX + drawW - 50f, drawY + 15f);
 
-                batch.setColor(Color.WHITE);
+                batch.setColor(1, 1, 1, 1);
             }
         } catch (Exception e) {
             // Ignore rendering errors
         }
 
-        batch.setColor(Color.WHITE);
+        batch.setColor(1, 1, 1, 1);
     }
 
     /**
@@ -634,8 +651,27 @@ public class GameRenderer implements GameEventListener {
 
     @Override
     public void onEvent(com.pear.pudding.game.state.GameEvent event) {
-        // Trigger animations based on events
-        // TODO: Implement animations for card played, card drawn, etc.
+        if (event instanceof com.pear.pudding.game.event.CardPlayedEvent) {
+            cardPlayTimers.put(((com.pear.pudding.game.event.CardPlayedEvent) event).cardInstanceId, 0f);
+        }
+    }
+
+    /**
+     * Update animation timers. Call this once per frame before rendering.
+     */
+    public void update(float delta) {
+        com.badlogic.gdx.utils.Array<String> keysToRemove = new com.badlogic.gdx.utils.Array<>();
+        for (com.badlogic.gdx.utils.ObjectMap.Entry<String, Float> entry : cardPlayTimers) {
+            float newTime = entry.value + delta;
+            if (newTime >= CARD_PLAY_ANIM_DURATION) {
+                keysToRemove.add(entry.key);
+            } else {
+                entry.value = newTime;
+            }
+        }
+        for (String key : keysToRemove) {
+            cardPlayTimers.remove(key);
+        }
     }
 
     /**

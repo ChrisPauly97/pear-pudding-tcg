@@ -35,9 +35,7 @@ public class MenuScreen implements Screen {
     public MenuScreen(MyGame game) {
         this.manager = game.manager;
         this.game = game;
-        manager.finishLoading();
-        skin = manager.
-                get("uiskin.json", Skin.class);
+        skin = manager.get("uiskin.json", Skin.class);
         batch = new SpriteBatch();
         camera = new OrthographicCamera(WINDOW_WIDTH, WINDOW_HEIGHT);
         viewport = new FitViewport(WINDOW_WIDTH, WINDOW_HEIGHT, camera);
@@ -72,12 +70,16 @@ public class MenuScreen implements Screen {
         playButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                // Load world assets and then go to world
+                AssetLoadingScreen.loadWorldAssets(game.manager);
                 game.setScreen(new WorldScreen(game));
             }
         });
         editorButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                // Load world assets and then go to editor
+                AssetLoadingScreen.loadWorldAssets(game.manager);
                 game.setScreen(new MapEditorScreen(game));
             }
         });

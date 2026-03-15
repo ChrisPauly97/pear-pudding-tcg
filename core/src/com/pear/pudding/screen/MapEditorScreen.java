@@ -9,10 +9,17 @@ import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pear.pudding.MyGame;
 import com.pear.pudding.world.Chest;
+import com.pear.pudding.world.Door;
 import com.pear.pudding.world.EnemyNPC;
 import com.pear.pudding.world.WorldMap;
 
@@ -20,10 +27,11 @@ import static com.pear.pudding.game.data.GameConstants.WINDOW_HEIGHT;
 import static com.pear.pudding.game.data.GameConstants.WINDOW_WIDTH;
 
 public class MapEditorScreen implements Screen, InputProcessor {
-    enum Brush { GRASS, WALL, ENEMY, CHEST, PLAYER_SPAWN, RESET }
+    enum Brush { GRASS, WALL, ENEMY, CHEST, DOOR, PLAYER_SPAWN, RESET }
 
     private final MyGame game;
-    private final WorldMap worldMap;
+    private WorldMap worldMap;
+    private String currentMapName = "main";
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final SpriteBatch hudBatch;
@@ -54,20 +62,17 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private float saveMessageTime = 0;
     private static final float SAVE_MESSAGE_DURATION = 1.5f;
 
+    // Map list overlay
+    private boolean showMapListOverlay = false;
+    private java.util.List<String> mapNames = new java.util.ArrayList<>();
+    private int mapListHoverIndex = -1;
+
     private static final float CAMERA_SPEED = 400f;
     private static final float TOOLBAR_HEIGHT = 40;
-    private static final float BUTTON_WIDTH = 80;
-    private static final float BUTTON_SPACING = 5;
 
-    // Toolbar button positions (HUD space)
-    private final float grassButtonX;
-    private final float wallButtonX;
-    private final float enemyButtonX;
-    private final float chestButtonX;
-    private final float playerSpawnButtonX;
-    private final float resetButtonX;
-    private final float saveButtonX;
-    private final float menuButtonX;
+    // Scene2D toolbar UI
+    private Stage toolbarStage;
+    private TextButton[] brushButtons;
 
     // Hover tile (tile coords; -1 = none)
     private int hoverTileX = -1;
@@ -89,7 +94,8 @@ public class MapEditorScreen implements Screen, InputProcessor {
 
     public MapEditorScreen(MyGame game) {
         this.game = game;
-        this.worldMap = new WorldMap();
+        this.currentMapName = "main";
+        loadMap(currentMapName);
 
         // Start camera at iso-centre of the map
         float centerWorldX = (WorldMap.MAP_WIDTH  / 2f) * WorldMap.TILE_SIZE;
@@ -110,16 +116,6 @@ public class MapEditorScreen implements Screen, InputProcessor {
         hudCam = new OrthographicCamera();
         hudCam.setToOrtho(false, WINDOW_WIDTH, WINDOW_HEIGHT);
         hudCam.update();
-
-        float startX = BUTTON_SPACING;
-        grassButtonX       = startX;
-        wallButtonX        = grassButtonX       + BUTTON_WIDTH + BUTTON_SPACING;
-        enemyButtonX       = wallButtonX        + BUTTON_WIDTH + BUTTON_SPACING;
-        chestButtonX       = enemyButtonX       + BUTTON_WIDTH + BUTTON_SPACING;
-        playerSpawnButtonX = chestButtonX       + BUTTON_WIDTH + BUTTON_SPACING;
-        resetButtonX       = playerSpawnButtonX + BUTTON_WIDTH + BUTTON_SPACING;
-        saveButtonX        = resetButtonX       + BUTTON_WIDTH + BUTTON_SPACING;
-        menuButtonX        = saveButtonX        + BUTTON_WIDTH + BUTTON_SPACING;
     }
 
     // --- Iso helpers (must match WorldScreen) ---
@@ -144,36 +140,155 @@ public class MapEditorScreen implements Screen, InputProcessor {
         return (isoY / ISO_HALF_H - isoX / ISO_HALF_W) / 2f;
     }
 
+    private void loadMap(String mapName) {
+        this.currentMapName = mapName;
+        this.worldMap = new WorldMap(mapName);
+    }
+
     @Override
     public void show() {
-        Gdx.input.setInputProcessor(this);
+        // Ensure world assets are queued for loading and fully loaded
+        AssetLoadingScreen.loadWorldAssets(game.manager);
+        // Process asset loading until world assets are ready
+        while (!game.manager.update() && !game.manager.contains("grass0.png", com.badlogic.gdx.graphics.Texture.class)) {
+            // Keep loading until grass0.png is available
+        }
         loadTextures();
+
+        mapNames = WorldMap.listMapNames();
+
+        // Create Scene2D toolbar stage
+        toolbarStage = new Stage(new FitViewport(WINDOW_WIDTH, WINDOW_HEIGHT));
+        Skin skin = game.manager.get("uiskin.json", Skin.class);
+
+        Table toolbar = new Table(skin);
+        toolbar.setFillParent(true);
+        toolbar.top().left().pad(4);
+
+        // Create brush toggle buttons (7 buttons for brushes)
+        brushButtons = new TextButton[7];
+        Brush[] brushTypes = {Brush.GRASS, Brush.WALL, Brush.ENEMY, Brush.CHEST, Brush.DOOR, Brush.PLAYER_SPAWN, Brush.RESET};
+        String[] buttonLabels = {"Grass", "Wall", "Enemy", "Chest", "Door", "Spawn", "Reset"};
+
+        for (int i = 0; i < brushTypes.length; i++) {
+            final Brush brush = brushTypes[i];
+            brushButtons[i] = new TextButton(buttonLabels[i], skin);
+            final int index = i;
+            brushButtons[i].addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    currentBrush = brush;
+                    updateBrushHighlight();
+                }
+            });
+            toolbar.add(brushButtons[i]).width(60).height(32).padRight(2);
+        }
+
+        // Save button
+        TextButton saveButton = new TextButton("Save", skin);
+        saveButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                worldMap.saveToFile(Gdx.files.local("maps/" + currentMapName + ".txt"));
+                saveMessageTime = SAVE_MESSAGE_DURATION;
+            }
+        });
+        toolbar.add(saveButton).width(60).height(32).padRight(2);
+
+        // New button
+        TextButton newButton = new TextButton("New", skin);
+        newButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                Gdx.input.getTextInput(new Input.TextInputListener() {
+                    @Override
+                    public void input(String text) {
+                        if (!text.trim().isEmpty()) {
+                            loadMap(text.trim());
+                            updateBrushHighlight();
+                        }
+                    }
+
+                    @Override
+                    public void canceled() {
+                    }
+                }, "New map name", "", "map name");
+            }
+        });
+        toolbar.add(newButton).width(60).height(32).padRight(2);
+
+        // Load button
+        TextButton loadButton = new TextButton("Load", skin);
+        loadButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                showMapListOverlay = !showMapListOverlay;
+                mapListHoverIndex = -1;
+            }
+        });
+        toolbar.add(loadButton).width(60).height(32).padRight(2);
+
+        // Menu button
+        TextButton menuButton = new TextButton("Menu", skin);
+        menuButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                game.setScreen(new MenuScreen(game));
+            }
+        });
+        toolbar.add(menuButton).width(60).height(32);
+
+        toolbarStage.addActor(toolbar);
+
+        // Set up input multiplexer: UI first, then world
+        InputMultiplexer multiplexer = new InputMultiplexer();
+        multiplexer.addProcessor(toolbarStage);
+        multiplexer.addProcessor(this);
+        Gdx.input.setInputProcessor(multiplexer);
+
+        updateBrushHighlight();
+    }
+
+    private void updateBrushHighlight() {
+        Brush[] brushTypes = {Brush.GRASS, Brush.WALL, Brush.ENEMY, Brush.CHEST, Brush.DOOR, Brush.PLAYER_SPAWN, Brush.RESET};
+        for (int i = 0; i < brushButtons.length; i++) {
+            Brush brush = brushTypes[i];
+            if (brush == currentBrush) {
+                brushButtons[i].getLabel().setColor(1, 1, 0, 1);  // Yellow for active
+            } else {
+                brushButtons[i].getLabel().setColor(1, 1, 1, 1);  // White for inactive
+            }
+        }
     }
 
     private void loadTextures() {
         if (grassTextures == null) {
-            grassTextures = new Texture[16];
-            for (int i = 0; i < 16; i++) {
-                grassTextures[i] = game.manager.get("grass" + i + ".png", Texture.class);
-                grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            try {
+                grassTextures = new Texture[16];
+                for (int i = 0; i < 16; i++) {
+                    grassTextures[i] = game.manager.get("grass" + i + ".png", Texture.class);
+                    grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                }
+                wallTextures = new Texture[8];
+                for (int i = 0; i < 8; i++) {
+                    wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
+                    wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                }
+                brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
+                brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
+                brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallLeft = game.manager.get("wallbrick_left.png", Texture.class);
+                brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallRight = game.manager.get("wallbrick_right.png", Texture.class);
+                brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                enemyTexture = game.manager.get("enemy.png", Texture.class);
+                enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                chestTexture = game.manager.get("chest.png", Texture.class);
+                chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            } catch (Exception e) {
+                // Assets not ready yet, will retry next frame
             }
-            wallTextures = new Texture[8];
-            for (int i = 0; i < 8; i++) {
-                wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
-                wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            }
-            brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
-            brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
-            brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            brickWallLeft = game.manager.get("wallbrick_left.png", Texture.class);
-            brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            brickWallRight = game.manager.get("wallbrick_right.png", Texture.class);
-            brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            enemyTexture = game.manager.get("enemy.png", Texture.class);
-            enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            chestTexture = game.manager.get("chest.png", Texture.class);
-            chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
         }
     }
 
@@ -241,6 +356,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
     }
 
     private void draw() {
+        // Lazy load textures on first render (defer until assets are ready)
+        loadTextures();
+
         Gdx.gl.glClearColor(0.12f, 0.18f, 0.12f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
@@ -407,40 +525,35 @@ public class MapEditorScreen implements Screen, InputProcessor {
             }
         }
 
+        // Doors (brown arch rectangles)
+        if (worldMap.getDoors().size() > 0) {
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            for (Door door : worldMap.getDoors()) {
+                float ix = toIsoX(door.x, door.y);
+                float iy = toIsoY(door.x, door.y);
+                // Door base
+                shapeRenderer.setColor(0.6f, 0.4f, 0.2f, 1); // Brown
+                shapeRenderer.rect(ix - 16, iy - 12, 32, 24);
+                // Door outline (arch)
+                shapeRenderer.setColor(0.4f, 0.2f, 0.05f, 1); // Dark brown
+                shapeRenderer.rect(ix - 18, iy - 14, 36, 28);
+            }
+            shapeRenderer.end();
+        }
+
         Gdx.gl.glDisable(GL20.GL_BLEND);
 
-        // --- Toolbar HUD ---
-        hudCam.setToOrtho(false, WINDOW_WIDTH, WINDOW_HEIGHT);
-        hudCam.update();
+        // Render Scene2D toolbar stage
+        toolbarStage.getViewport().apply();
+        toolbarStage.act(Gdx.graphics.getDeltaTime());
+        toolbarStage.draw();
+        viewport.apply();
 
-        shapeRenderer.setProjectionMatrix(hudCam.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.1f, 0.1f, 0.1f, 0.9f);
-        shapeRenderer.rect(0, WINDOW_HEIGHT - TOOLBAR_HEIGHT, WINDOW_WIDTH, TOOLBAR_HEIGHT);
-        shapeRenderer.end();
-
-        drawToolbarButtonBackground(grassButtonX,       WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, currentBrush == Brush.GRASS);
-        drawToolbarButtonBackground(wallButtonX,        WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, currentBrush == Brush.WALL);
-        drawToolbarButtonBackground(enemyButtonX,       WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, currentBrush == Brush.ENEMY);
-        drawToolbarButtonBackground(chestButtonX,       WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, currentBrush == Brush.CHEST);
-        drawToolbarButtonBackground(playerSpawnButtonX, WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, currentBrush == Brush.PLAYER_SPAWN);
-        drawToolbarButtonBackground(resetButtonX,       WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, currentBrush == Brush.RESET);
-        drawToolbarButtonBackground(saveButtonX,        WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, false);
-        drawToolbarButtonBackground(menuButtonX,        WINDOW_HEIGHT - TOOLBAR_HEIGHT, BUTTON_WIDTH, TOOLBAR_HEIGHT, false);
-
+        // Draw HUD text (status info at bottom)
         ensureFontLoaded();
         if (font != null) {
             hudBatch.setProjectionMatrix(hudCam.combined);
             hudBatch.begin();
-            font.setColor(1, 1, 1, 1);
-            font.draw(hudBatch, "Grass", grassButtonX       + 15, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Wall",  wallButtonX        + 18, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Enemy", enemyButtonX       + 12, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Chest", chestButtonX       + 14, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Spawn", playerSpawnButtonX + 10, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Reset", resetButtonX       + 13, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Save",  saveButtonX        + 18, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
-            font.draw(hudBatch, "Menu",  menuButtonX        + 17, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
             font.setColor(1, 1, 1, 1);
             font.draw(hudBatch, "Brush: " + currentBrush.name(), WINDOW_WIDTH - 250, 20);
             if (hoverTileX >= 0 && hoverTileY >= 0) {
@@ -461,18 +574,52 @@ public class MapEditorScreen implements Screen, InputProcessor {
             }
             hudBatch.end();
         }
+
+        // Draw map list overlay
+        if (showMapListOverlay) {
+            drawMapListOverlay();
+        }
     }
 
-    private void drawToolbarButtonBackground(float x, float y, float width, float height, boolean active) {
+    private void drawMapListOverlay() {
+        // Semi-transparent dark background
+        shapeRenderer.setProjectionMatrix(hudCam.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(active ? 0.55f : 0.4f, active ? 0.55f : 0.4f, active ? 0.55f : 0.4f, 1);
-        shapeRenderer.rect(x, y, width, height);
+        shapeRenderer.setColor(0, 0, 0, 0.7f);
+        shapeRenderer.rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT);
         shapeRenderer.end();
-        if (active) {
-            shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
-            shapeRenderer.setColor(1, 1, 1, 1);
-            shapeRenderer.rect(x, y, width, height);
-            shapeRenderer.end();
+
+        // Panel background
+        float panelX = 200;
+        float panelY = 100;
+        float panelW = 500;
+        float panelH = Math.min(600, 40 + mapNames.size() * 35);
+
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        shapeRenderer.setColor(0.2f, 0.2f, 0.2f, 0.95f);
+        shapeRenderer.rect(panelX, panelY, panelW, panelH);
+        shapeRenderer.setColor(0.8f, 0.8f, 0.8f, 1);
+        shapeRenderer.rect(panelX + 2, panelY + 2, panelW - 4, panelH - 4);
+        shapeRenderer.end();
+
+        // Draw map names
+        ensureFontLoaded();
+        if (font != null) {
+            hudBatch.setProjectionMatrix(hudCam.combined);
+            hudBatch.begin();
+            font.setColor(0, 0, 0, 1);
+            float yOffset = panelY + panelH - 30;
+            for (int i = 0; i < mapNames.size(); i++) {
+                if (i == mapListHoverIndex) {
+                    shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+                    shapeRenderer.setColor(0.5f, 0.5f, 0.9f, 0.5f);
+                    shapeRenderer.rect(panelX + 5, yOffset - 25, panelW - 10, 30);
+                    shapeRenderer.end();
+                }
+                font.draw(hudBatch, mapNames.get(i), panelX + 20, yOffset);
+                yOffset -= 35;
+            }
+            hudBatch.end();
         }
     }
 
@@ -518,6 +665,21 @@ public class MapEditorScreen implements Screen, InputProcessor {
                 worldMap.addChest(new Chest("chest_" + System.nanoTime(), wx, wy, cardId));
                 break;
             }
+            case DOOR: {
+                float wx = tx * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
+                float wy = ty * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
+                Gdx.input.getTextInput(new Input.TextInputListener() {
+                    @Override
+                    public void input(String text) {
+                        worldMap.addDoor(new Door("door_" + System.nanoTime(), wx, wy, text.trim()));
+                    }
+
+                    @Override
+                    public void canceled() {
+                    }
+                }, "Target map name (empty=exit)", "", "map name");
+                break;
+            }
             case PLAYER_SPAWN:
                 worldMap.setPlayerSpawn(tx, ty);
                 break;
@@ -551,6 +713,11 @@ public class MapEditorScreen implements Screen, InputProcessor {
             worldMap.removeEnemy(nearby);
             return;
         }
+        Door nearbyDoor = worldMap.findNearbyDoor(wx, wy, WorldMap.TILE_SIZE);
+        if (nearbyDoor != null) {
+            worldMap.removeDoor(nearbyDoor);
+            return;
+        }
 
         // If hovering over a wall, decrease height instead of removing
         if (worldMap.getTile(hoverTileX, hoverTileY) != 0) {
@@ -565,6 +732,14 @@ public class MapEditorScreen implements Screen, InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
+        // Handle Escape to close map list overlay
+        if (keycode == Input.Keys.ESCAPE) {
+            if (showMapListOverlay) {
+                showMapListOverlay = false;
+                return true;
+            }
+        }
+
         switch (keycode) {
             case Input.Keys.W: case Input.Keys.UP:    moveUp    = true; return true;
             case Input.Keys.S: case Input.Keys.DOWN:  moveDown  = true; return true;
@@ -589,18 +764,43 @@ public class MapEditorScreen implements Screen, InputProcessor {
     public boolean touchDown(int screenX, int screenY, int pointer, int button) {
         lastMouseX = screenX;
         lastMouseY = screenY;
-        updateHoverTile(screenX, screenY);
 
-        screenVec.set(screenX, screenY, 0);
-        hudCam.unproject(screenVec);
-        if (screenVec.y > (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) {
-            handleToolbarClick((int) screenVec.x);
+        // Handle map list overlay
+        if (showMapListOverlay) {
+            handleMapListClick(screenX, screenY);
             return true;
         }
+
+        updateHoverTile(screenX, screenY);
 
         if (button == 0) { paintTile(); return true; }
         if (button == 1) { eraseTile(); return true; }
         return false;
+    }
+
+    private void handleMapListClick(int screenX, int screenY) {
+        float panelX = 200;
+        float panelY = 100;
+        float panelW = 500;
+        float panelH = Math.min(600, 40 + mapNames.size() * 35);
+
+        // Close overlay if clicking outside
+        if (screenX < panelX || screenX > panelX + panelW || screenY < panelY || screenY > panelY + panelH) {
+            showMapListOverlay = false;
+            return;
+        }
+
+        // Determine which map was clicked
+        float yOffset = panelY + panelH - 30;
+        for (int i = 0; i < mapNames.size(); i++) {
+            if (screenY >= yOffset - 25 && screenY <= yOffset + 5) {
+                loadMap(mapNames.get(i));
+                showMapListOverlay = false;
+                updateBrushHighlight();
+                return;
+            }
+            yOffset -= 35;
+        }
     }
 
     @Override
@@ -610,6 +810,13 @@ public class MapEditorScreen implements Screen, InputProcessor {
     public boolean touchDragged(int screenX, int screenY, int pointer) {
         lastMouseX = screenX;
         lastMouseY = screenY;
+
+        // Update map list hover if overlay is visible
+        if (showMapListOverlay) {
+            updateMapListHover(screenX, screenY);
+            return true;
+        }
+
         updateHoverTile(screenX, screenY);
         screenVec.set(screenX, screenY, 0);
         hudCam.unproject(screenVec);
@@ -617,26 +824,33 @@ public class MapEditorScreen implements Screen, InputProcessor {
         return false;
     }
 
+    private void updateMapListHover(int screenX, int screenY) {
+        float panelX = 200;
+        float panelY = 100;
+        float panelW = 500;
+        float panelH = Math.min(600, 40 + mapNames.size() * 35);
+
+        if (screenX < panelX || screenX > panelX + panelW || screenY < panelY || screenY > panelY + panelH) {
+            mapListHoverIndex = -1;
+            return;
+        }
+
+        float yOffset = panelY + panelH - 30;
+        for (int i = 0; i < mapNames.size(); i++) {
+            if (screenY >= yOffset - 25 && screenY <= yOffset + 5) {
+                mapListHoverIndex = i;
+                return;
+            }
+            yOffset -= 35;
+        }
+        mapListHoverIndex = -1;
+    }
+
     @Override
     public boolean mouseMoved(int screenX, int screenY) {
         lastMouseX = screenX;
         lastMouseY = screenY;
         return false;
-    }
-
-    private void handleToolbarClick(int virtX) {
-        if      (virtX >= grassButtonX       && virtX < grassButtonX       + BUTTON_WIDTH) currentBrush = Brush.GRASS;
-        else if (virtX >= wallButtonX        && virtX < wallButtonX        + BUTTON_WIDTH) currentBrush = Brush.WALL;
-        else if (virtX >= enemyButtonX       && virtX < enemyButtonX       + BUTTON_WIDTH) currentBrush = Brush.ENEMY;
-        else if (virtX >= chestButtonX       && virtX < chestButtonX       + BUTTON_WIDTH) currentBrush = Brush.CHEST;
-        else if (virtX >= playerSpawnButtonX && virtX < playerSpawnButtonX + BUTTON_WIDTH) currentBrush = Brush.PLAYER_SPAWN;
-        else if (virtX >= resetButtonX       && virtX < resetButtonX       + BUTTON_WIDTH) currentBrush = Brush.RESET;
-        else if (virtX >= saveButtonX        && virtX < saveButtonX        + BUTTON_WIDTH) {
-            worldMap.saveToFile(Gdx.files.local("map.txt"));
-            saveMessageTime = SAVE_MESSAGE_DURATION;
-        } else if (virtX >= menuButtonX && virtX < menuButtonX + BUTTON_WIDTH) {
-            game.setScreen(new MenuScreen(game));
-        }
     }
 
     @Override
@@ -671,6 +885,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
         viewport.update(width, height);
         camera.position.set(cameraIsoX, cameraIsoY, 0);
         camera.update();
+        if (toolbarStage != null) {
+            toolbarStage.getViewport().update(width, height, true);
+        }
     }
 
     @Override public void pause() {}
@@ -682,6 +899,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
         shapeRenderer.dispose();
         hudBatch.dispose();
         worldBatch.dispose();
+        if (toolbarStage != null) {
+            toolbarStage.dispose();
+        }
         // Textures are managed by AssetManager, not disposed here
     }
 }
