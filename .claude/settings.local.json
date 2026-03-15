@@ -15,7 +15,8 @@
       "Bash(xargs basename:*)",
       "Bash(javac:*)",
       "Bash(ls:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(java TextureGenerator:*)"
     ]
   }
 }

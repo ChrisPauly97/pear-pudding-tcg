@@ -283,44 +283,99 @@ public class TextureGenerator {
         BufferedImage img = new BufferedImage(48, 40, BufferedImage.TYPE_INT_ARGB);
         Random rand = new Random(77);
 
-        // Chest is an isometric box with visible top and front faces
-        // Top face: 48×20 at top
-        // Front face: 48×20 at bottom (slightly darker)
+        // Clear to transparent
+        for (int i = 0; i < 48 * 40; i++) {
+            img.setRGB(i % 48, i / 48, 0x00000000);
+        }
 
-        int topFaceTop = 0, topFaceBottom = 20;
-        int frontFaceTop = 20, frontFaceBottom = 40;
+        // Isometric chest with 3 visible faces: left side, front, top
+        // Left side face: x 0-12, y 12-28 (darker, creates depth)
+        // Front face: x 12-36, y 12-28 (medium brightness)
+        // Top face: x 12-36, y 0-12 (bright, lid)
+        // Right side: x 36-48, y 12-28 (darkest, creates depth)
 
-        // Generate top and front faces with gold color
-        for (int y = 0; y < 40; y++) {
-            for (int x = 0; x < 48; x++) {
-                int px = x, py = y;
-
-                // Top face (bright gold with diamond-like shading)
-                if (py >= topFaceTop && py < topFaceBottom) {
-                    // Create diamond shading on top face
-                    float dx = Math.abs(px - 24) / 24.0f;
-                    float dy = Math.abs(py - 10) / 10.0f;
-                    if (dx + dy <= 1.0f) {
-                        int brightness = 200 + rand.nextInt(30);
-                        int rgb = (255 << 24) | (brightness << 16) | (brightness - 40) << 8 | (brightness - 80);
-                        img.setRGB(px, py, rgb);
-                    }
-                    continue;
-                }
-
-                // Front face (darker gold)
-                if (py >= frontFaceTop && py < frontFaceBottom) {
-                    int brightness = 160 + rand.nextInt(20);
-                    int rgb = (255 << 24) | (brightness << 16) | (brightness - 60) << 8 | (brightness - 100);
-                    img.setRGB(px, py, rgb);
+        // === LEFT SIDE FACE (dark shadow) ===
+        for (int y = 12; y < 28; y++) {
+            for (int x = 0; x < 12; x++) {
+                // Left side tapers from 0 at top to 12 at bottom (isometric perspective)
+                int maxX = (y - 12) / 2;
+                if (x <= maxX) {
+                    int shadow = 80 + rand.nextInt(20);
+                    int rgb = (255 << 24) | (shadow << 16) | ((shadow - 30) << 8) | (shadow - 50);
+                    img.setRGB(x, y, rgb);
                 }
             }
         }
 
-        // Add a lid outline (decorative)
-        for (int x = 8; x < 40; x++) {
-            int rgb = (255 << 24) | (100 << 16) | (100 << 8) | (50);
-            img.setRGB(x, 19, rgb); // Line at top-front edge
+        // === FRONT FACE (main body) ===
+        for (int y = 12; y < 28; y++) {
+            for (int x = 12; x < 36; x++) {
+                // Gold color with wood grain texture
+                int baseGold = 200;
+                int var = rand.nextInt(15) - 7;
+                int r = Math.max(0, Math.min(255, baseGold + var));
+                int g = Math.max(0, Math.min(255, baseGold - 30 + var));
+                int b = Math.max(0, Math.min(255, baseGold - 100 + var));
+
+                // Add horizontal stripes for wood look
+                if ((y / 2) % 2 == 0) {
+                    g = Math.max(0, g - 15);
+                    b = Math.max(0, b - 15);
+                }
+
+                int rgb = (255 << 24) | (r << 16) | (g << 8) | b;
+                img.setRGB(x, y, rgb);
+            }
+        }
+
+        // === RIGHT SIDE FACE (very dark for depth) ===
+        for (int y = 12; y < 28; y++) {
+            for (int x = 36; x < 48; x++) {
+                // Right side tapers from 12 at top to 0 at bottom
+                int maxX = 12 - ((y - 12) / 2);
+                if (x - 36 < maxX) {
+                    int shadow = 60 + rand.nextInt(15);
+                    int rgb = (255 << 24) | (shadow << 16) | ((shadow - 40) << 8) | (shadow - 60);
+                    img.setRGB(x, y, rgb);
+                }
+            }
+        }
+
+        // === TOP FACE (lid - bright, angled) ===
+        for (int y = 0; y < 12; y++) {
+            for (int x = 12; x < 36; x++) {
+                // Bright gold with shading from left to right
+                float xNorm = (x - 12) / 24.0f;
+                int brightness = 230 - (int)(xNorm * 30);
+                int r = brightness;
+                int g = brightness - 20;
+                int b = brightness - 60;
+
+                // Darken top edges slightly
+                if (y < 2 || y > 9) {
+                    brightness -= 20;
+                    r -= 20;
+                    g -= 20;
+                    b -= 20;
+                }
+
+                int rgb = (255 << 24) | (r << 16) | (Math.max(0, g) << 8) | Math.max(0, b);
+                img.setRGB(x, y, rgb);
+            }
+        }
+
+        // === LID EDGE HIGHLIGHT ===
+        for (int x = 12; x < 36; x++) {
+            int rgb = (255 << 24) | (240 << 16) | (200 << 8) | 100;
+            img.setRGB(x, 11, rgb);
+        }
+
+        // === LOCK/DETAIL (small darker rectangle in center) ===
+        for (int y = 18; y < 22; y++) {
+            for (int x = 22; x < 26; x++) {
+                int rgb = (255 << 24) | (80 << 16) | (60 << 8) | 40;
+                img.setRGB(x, y, rgb);
+            }
         }
 
         return img;
