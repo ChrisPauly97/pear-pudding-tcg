@@ -507,10 +507,11 @@ public class WorldScreen implements Screen, InputProcessor {
             float isoY = toIsoY(playerX, playerY);
             float surfaceBelow = worldMap.isWall(playerX, playerY) ? WALL_HEIGHT : 0f;
             float heightAbove = playerZ - surfaceBelow;
-            float shadowAlpha = Math.max(0.2f, 1f - heightAbove / 60f);
+            // Shadow fades quickly at height (much dimmer when airborne)
+            float shadowAlpha = Math.max(0.05f, 1f - heightAbove / 30f);
 
-            // Shadow scales with height (fades as player jumps higher)
-            float shadowScale = Math.max(0.3f, 1f - heightAbove / 80f);
+            // Shadow shrinks with height (very small at apex)
+            float shadowScale = Math.max(0.1f, 1f - heightAbove / 40f);
 
             // Small shadow ellipse: width stretched for iso, height compressed
             float shadowWidth = 20f * shadowScale;    // ~20-7px wide at ground level
