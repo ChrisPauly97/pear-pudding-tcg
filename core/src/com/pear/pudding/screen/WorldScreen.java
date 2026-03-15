@@ -257,7 +257,7 @@ public class WorldScreen implements Screen, InputProcessor {
 
         // Trail: add new tile
         int curTileX = (int)(playerX / WorldMap.TILE_SIZE);
-        int curTileY = (int)(playerY / WorldMap.TILE_SIZE) - 1;
+        int curTileY = (int)(playerY / WorldMap.TILE_SIZE) + 1;
         long curKey = packTile(curTileX, curTileY);
         if (curKey != lastPlayerTile) {
             trailTiles.put(curKey, 1.0f);
