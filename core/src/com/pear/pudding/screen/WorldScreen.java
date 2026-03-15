@@ -257,7 +257,7 @@ public class WorldScreen implements Screen, InputProcessor {
 
         // Trail: add new tile
         int curTileX = (int)(playerX / WorldMap.TILE_SIZE);
-        int curTileY = (int)(playerY / WorldMap.TILE_SIZE);
+        int curTileY = (int)(playerY / WorldMap.TILE_SIZE) - 1;
         long curKey = packTile(curTileX, curTileY);
         if (curKey != lastPlayerTile) {
             trailTiles.put(curKey, 1.0f);
@@ -511,18 +511,19 @@ public class WorldScreen implements Screen, InputProcessor {
             // Shadow scales with height (fades as player jumps higher)
             float shadowScale = Math.max(0.3f, 1f - heightAbove / 80f);
 
-            // In isometric space: shadow needs to be stretched horizontally (wider) and compressed vertically
-            // to match the isometric diamond perspective
-            float isoShadowWidth = PLAYER_RADIUS * shadowScale * 2.5f;   // wider for iso perspective
-            float isoShadowHeight = PLAYER_RADIUS * shadowScale * 0.6f;  // narrower for iso perspective
+            // Small shadow ellipse: width stretched for iso, height compressed
+            float shadowWidth = 20f * shadowScale;    // ~20-7px wide at ground level
+            float shadowHeight = 8f * shadowScale;    // ~8-3px tall at ground level
 
-            // Position shadow on ground plane, directly below player feet in iso space
-            // Player sprite is at isoY - 24 to isoY + 24, so ground is around isoY + 20
-            float shadowIsoY = isoY + PLAYER_RADIUS * 1.5f;
+            // Position shadow on ground plane, directly below player
+            // Player sprite is roughly 32px wide centered at isoX
+            // Shadow should be at player's feet, in front of them (lower on screen)
+            float shadowIsoX = isoX - shadowWidth;     // Left edge of bounding box
+            float shadowIsoY = isoY + 8f;              // At player's feet level
 
             shapeRenderer.setColor(0.05f, 0.1f, 0.05f, shadowAlpha);
-            // Draw shadow centered on player's iso position with proper isometric proportions
-            shapeRenderer.ellipse(isoX, shadowIsoY, isoShadowWidth * 2, isoShadowHeight * 2);
+            // Draw shadow as a small ellipse with proper iso proportions
+            shapeRenderer.ellipse(shadowIsoX, shadowIsoY, shadowWidth * 2, shadowHeight * 2);
         }
 
         // [E] popup box above nearby entity
