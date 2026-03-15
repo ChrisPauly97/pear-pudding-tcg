@@ -236,6 +236,15 @@ public class WorldMap {
         return doors;
     }
 
+    public Door findDoorById(String doorId) {
+        for (Door door : doors) {
+            if (door.id.equals(doorId)) {
+                return door;
+            }
+        }
+        return null;
+    }
+
     public void addDoor(Door door) {
         doors.add(door);
     }
@@ -355,7 +364,12 @@ public class WorldMap {
 
         for (Door door : doors) {
             String target = (door.targetMapName == null || door.targetMapName.isEmpty()) ? "__exit__" : door.targetMapName;
-            sb.append("DOOR ").append((int) door.x).append(" ").append((int) door.y).append(" ").append(target).append("\n");
+            String targetDoor = (door.targetDoorId == null || door.targetDoorId.isEmpty()) ? "" : door.targetDoorId;
+            if (targetDoor.isEmpty()) {
+                sb.append("DOOR ").append((int) door.x).append(" ").append((int) door.y).append(" ").append(target).append("\n");
+            } else {
+                sb.append("DOOR ").append((int) door.x).append(" ").append((int) door.y).append(" ").append(target).append(" ").append(targetDoor).append("\n");
+            }
         }
 
         fh.writeString(sb.toString(), false);
@@ -433,7 +447,8 @@ public class WorldMap {
                         if (target.equals("__exit__")) {
                             target = "";
                         }
-                        doors.add(new Door("door_" + System.currentTimeMillis() + "_" + i, x, y, target));
+                        String targetDoorId = (parts.length >= 5) ? parts[4] : "";
+                        doors.add(new Door("door_" + System.currentTimeMillis() + "_" + i, x, y, target, targetDoorId));
                     }
                 } else if (inHeightsSection) {
                     // Parse height entries: "x,y,height"

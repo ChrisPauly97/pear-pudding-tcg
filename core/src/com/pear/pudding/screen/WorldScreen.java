@@ -103,12 +103,30 @@ public class WorldScreen implements Screen, InputProcessor {
 
     // Primary constructor with map name and parent screen
     public WorldScreen(MyGame game, String mapName, WorldScreen parentScreen) {
+        this(game, mapName, parentScreen, null);
+    }
+
+    // Constructor with optional target door ID
+    public WorldScreen(MyGame game, String mapName, WorldScreen parentScreen, String targetDoorId) {
         this.game = game;
         this.mapName = mapName;
         this.parentScreen = parentScreen;
         this.worldMap = new WorldMap(mapName);
 
-        if (worldMap.hasPlayerSpawn()) {
+        // Try to spawn at target door if specified
+        if (targetDoorId != null && !targetDoorId.isEmpty()) {
+            Door targetDoor = worldMap.findDoorById(targetDoorId);
+            if (targetDoor != null) {
+                playerX = targetDoor.x;
+                playerY = targetDoor.y;
+            } else if (worldMap.hasPlayerSpawn()) {
+                playerX = worldMap.getPlayerSpawnX() * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2;
+                playerY = worldMap.getPlayerSpawnY() * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2;
+            } else {
+                playerX = 50 * WorldMap.TILE_SIZE;
+                playerY = 15 * WorldMap.TILE_SIZE;
+            }
+        } else if (worldMap.hasPlayerSpawn()) {
             playerX = worldMap.getPlayerSpawnX() * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2;
             playerY = worldMap.getPlayerSpawnY() * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2;
         } else {
@@ -380,9 +398,8 @@ public class WorldScreen implements Screen, InputProcessor {
         for (int i = 0; i < 3; i++) {
             int testTileX = (int) (testXs[i] / WorldMap.TILE_SIZE);
             int testTileY = (int) (testYs[i] / WorldMap.TILE_SIZE);
-            int testDepth = testTileX + testTileY;
             byte wallHeight = worldMap.getWallHeight(testXs[i], testYs[i]);
-            if (wallHeight > CLIMBABLE_HEIGHT && testDepth > playerDepth && groundZ < wallHeight * WALL_FACE_H) {
+            if (wallHeight > CLIMBABLE_HEIGHT && groundZ < wallHeight * WALL_FACE_H) {
                 return;
             }
         }
@@ -694,8 +711,8 @@ public class WorldScreen implements Screen, InputProcessor {
                     game.setScreen(parentScreen);
                 }
             } else {
-                // Enter new map as a sub-area
-                game.setScreen(new WorldScreen(game, door.targetMapName, this));
+                // Enter new map as a sub-area, with optional target door
+                game.setScreen(new WorldScreen(game, door.targetMapName, this, door.targetDoorId));
             }
         }
     }

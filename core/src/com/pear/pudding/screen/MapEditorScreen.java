@@ -921,18 +921,23 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private void showDoorNameDialog(float wx, float wy) {
         Skin skin = game.manager.get("uiskin.json", Skin.class);
         final TextField targetField = new TextField("", skin);
-        final Dialog dialog = new Dialog("Door Target Map", skin) {
+        final TextField targetDoorField = new TextField("", skin);
+        final Dialog dialog = new Dialog("Door Target", skin) {
             @Override
             protected void result(Object object) {
                 if ((Boolean) object) {
                     String target = targetField.getText().trim();
-                    worldMap.addDoor(new Door("door_" + System.nanoTime(), wx, wy, target));
+                    String targetDoorId = targetDoorField.getText().trim();
+                    worldMap.addDoor(new Door("door_" + System.nanoTime(), wx, wy, target, targetDoorId));
                 }
             }
         };
 
         dialog.getContentTable().add("Target map (empty=exit)").padRight(10);
         dialog.getContentTable().add(targetField).width(200).row();
+
+        dialog.getContentTable().add("Target door ID (optional)").padRight(10);
+        dialog.getContentTable().add(targetDoorField).width(200).row();
 
         // Add available maps list
         if (!mapNames.isEmpty()) {
@@ -945,12 +950,44 @@ public class MapEditorScreen implements Screen, InputProcessor {
                     String selected = mapList.getSelected();
                     if (selected != null) {
                         targetField.setText(selected);
+                        targetDoorField.setText("");  // Clear target door when map changes
                     }
                 }
             });
             ScrollPane scrollPane = new ScrollPane(mapList);
-            dialog.getContentTable().add(scrollPane).width(200).height(150).row();
+            dialog.getContentTable().add(scrollPane).width(200).height(100).row();
         }
+
+        // Add available doors list (updated when target map changes)
+        dialog.getContentTable().add("Available doors in target:").padTop(10).row();
+        final List<String> doorList = new List<String>(skin);
+        final ScrollPane doorScrollPane = new ScrollPane(doorList);
+        dialog.getContentTable().add(doorScrollPane).width(200).height(100).row();
+
+        doorList.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                String selected = doorList.getSelected();
+                if (selected != null) {
+                    targetDoorField.setText(selected);
+                }
+            }
+        });
+
+        // Update door list when target map is typed or selected
+        targetField.setTextFieldListener((textField, c) -> {
+            String mapName = textField.getText().trim();
+            if (!mapName.isEmpty()) {
+                WorldMap tmpMap = new WorldMap(mapName);
+                java.util.List<String> doorIds = new java.util.ArrayList<>();
+                for (Door d : tmpMap.getDoors()) {
+                    doorIds.add(d.id);
+                }
+                doorList.setItems(doorIds.toArray(new String[0]));
+            } else {
+                doorList.setItems();
+            }
+        });
 
         dialog.button("OK", true);
         dialog.button("Cancel", false);
