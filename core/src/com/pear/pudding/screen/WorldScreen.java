@@ -126,6 +126,27 @@ public class WorldScreen implements Screen, InputProcessor {
         return (worldX / WorldMap.TILE_SIZE + worldY / WorldMap.TILE_SIZE) * ISO_HALF_H;
     }
 
+    // --- Trail system helpers ---
+
+    private static long packTile(int tx, int ty) {
+        return ((long) tx << 32) | (ty & 0xFFFFFFFFL);
+    }
+
+    private float getTrailDarkening(int tx, int ty) {
+        float d = trailTiles.getOrDefault(packTile(tx, ty), 0f);
+        // Cardinal neighbors (half weight)
+        d += trailTiles.getOrDefault(packTile(tx+1, ty), 0f) * 0.5f;
+        d += trailTiles.getOrDefault(packTile(tx-1, ty), 0f) * 0.5f;
+        d += trailTiles.getOrDefault(packTile(tx, ty+1), 0f) * 0.5f;
+        d += trailTiles.getOrDefault(packTile(tx, ty-1), 0f) * 0.5f;
+        // Diagonal neighbors (quarter weight)
+        d += trailTiles.getOrDefault(packTile(tx+1, ty+1), 0f) * 0.25f;
+        d += trailTiles.getOrDefault(packTile(tx-1, ty+1), 0f) * 0.25f;
+        d += trailTiles.getOrDefault(packTile(tx+1, ty-1), 0f) * 0.25f;
+        d += trailTiles.getOrDefault(packTile(tx-1, ty-1), 0f) * 0.25f;
+        return Math.min(d, 1f);
+    }
+
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
@@ -232,6 +253,24 @@ public class WorldScreen implements Screen, InputProcessor {
         } else {
             if (footstepSound != null) footstepSound.stop();
             footstepTimer = 0;
+        }
+
+        // Trail: add new tile
+        int curTileX = (int)(playerX / WorldMap.TILE_SIZE);
+        int curTileY = (int)(playerY / WorldMap.TILE_SIZE);
+        long curKey = packTile(curTileX, curTileY);
+        if (curKey != lastPlayerTile) {
+            trailTiles.put(curKey, 1.0f);
+            lastPlayerTile = curKey;
+        }
+
+        // Trail: decay all tiles
+        Iterator<Map.Entry<Long, Float>> it = trailTiles.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<Long, Float> e = it.next();
+            float intensity = e.getValue() - delta * TRAIL_FADE_RATE;
+            if (intensity <= 0f) it.remove();
+            else e.setValue(intensity);
         }
 
         // Camera tracks player in iso space
@@ -357,8 +396,11 @@ public class WorldScreen implements Screen, InputProcessor {
                 int hash  = ((tx * 73856093) ^ (ty * 19349663)) & 0x7FFFFFFF;
 
                 if (tile == 0 && grassTextures != null) {
-                    worldBatch.setColor(1, 1, 1, 1);
+                    float trailDark = getTrailDarkening(tx, ty);
+                    float c = 1f - trailDark * TRAIL_MAX_DARKEN;
+                    worldBatch.setColor(c, c, c, 1f);
                     worldBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
+                    worldBatch.setColor(1, 1, 1, 1);  // reset for walls
                 } else if (tile != 0 && brickWallTop != null) {
                     // Isometric brick wall - stack by height
                     byte wallHeight = worldMap.getHeight(tx, ty);
