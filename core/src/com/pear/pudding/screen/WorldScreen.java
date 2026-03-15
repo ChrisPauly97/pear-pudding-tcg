@@ -34,6 +34,9 @@ public class WorldScreen implements Screen, InputProcessor {
     private BitmapFont font;
     private Texture[] grassTextures;
     private Texture[] wallTextures;
+    private Texture playerTexture;
+    private Texture enemyTexture;
+    private Texture chestTexture;
 
     private float playerX = 50 * WorldMap.TILE_SIZE;
     private float playerY = 15 * WorldMap.TILE_SIZE;
@@ -119,6 +122,12 @@ public class WorldScreen implements Screen, InputProcessor {
                     wallTextures[i] = new Texture("wall" + i + ".png");
                     wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 }
+                playerTexture = new Texture("player.png");
+                playerTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                enemyTexture = new Texture("enemy.png");
+                enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                chestTexture = new Texture("chest.png");
+                chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 if (footstepSound == null) {
                     footstepSound = Gdx.audio.newSound(Gdx.files.internal("freesound_community-running-in-grass-6237.mp3"));
                 }
@@ -308,8 +317,6 @@ public class WorldScreen implements Screen, InputProcessor {
         // --- Entity rendering: Y-sorted so closer entities overdraw farther ones ---
         EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
         Chest nearbyChest = worldMap.findNearbChest(playerX, playerY, INTERACT_RANGE);
-        float enemySize = WorldMap.TILE_SIZE * 0.6f;
-        float chestSize = WorldMap.TILE_SIZE * 0.5f;
 
         List<float[]> entities = new ArrayList<>();
         entities.add(new float[]{playerX, playerY, 0}); // 0 = player
@@ -322,8 +329,9 @@ public class WorldScreen implements Screen, InputProcessor {
         // Sort descending by isoY: furthest (highest isoY) drawn first
         entities.sort((a, b) -> Float.compare(toIsoY(b[0], b[1]), toIsoY(a[0], a[1])));
 
-        shapeRenderer.setProjectionMatrix(camera.combined);
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        // Draw sprites with SpriteBatch (reuse existing batch)
+        spriteBatch.setProjectionMatrix(camera.combined);
+        spriteBatch.begin();
 
         for (float[] ent : entities) {
             float isoX = toIsoX(ent[0], ent[1]);
@@ -331,54 +339,57 @@ public class WorldScreen implements Screen, InputProcessor {
             int entityType = (int) ent[2];
 
             if (entityType == 0) {
-                // Player
-                // Shadow when jumping
-                if (isJumping) {
-                    float surfaceBelow = worldMap.isWall(playerX, playerY) ? WALL_HEIGHT : 0f;
-                    float heightAbove  = playerZ - surfaceBelow;
-                    float shadowScale  = Math.max(0.4f, 1f - heightAbove / 60f);
-                    float shadowR = PLAYER_RADIUS * shadowScale;
-                    float shadowIsoY = toIsoY(playerX, playerY) + surfaceBelow * 0.5f;
-                    shapeRenderer.setColor(0.05f, 0.1f, 0.05f, 0.6f);
-                    shapeRenderer.rect(isoX - shadowR, shadowIsoY - shadowR, shadowR * 2, shadowR * 2);
-                }
-                // Player sprite (portrait rectangle, offset up by jump)
+                // Player sprite (32×48)
                 float visualOffsetY = playerZ * 0.5f;
-                shapeRenderer.setColor(0.2f, 0.6f, 1f, 1);
-                shapeRenderer.rect(isoX - 10, isoY - 14 + visualOffsetY, 20, 28);
+                if (playerTexture != null) {
+                    spriteBatch.setColor(1, 1, 1, 1);
+                    spriteBatch.draw(playerTexture, isoX - 16, isoY - 24 + visualOffsetY, 32, 48);
+                }
             } else if (entityType == 1) {
-                // Enemy (purple if tracking, red otherwise)
-                EnemyNPC enemy = null;
-                for (EnemyNPC e : worldMap.getEnemies()) {
-                    if (e.x == ent[0] && e.y == ent[1]) {
-                        enemy = e;
-                        break;
-                    }
+                // Enemy sprite (32×48)
+                if (enemyTexture != null) {
+                    spriteBatch.setColor(1, 1, 1, 1);
+                    spriteBatch.draw(enemyTexture, isoX - 16, isoY - 24, 32, 48);
                 }
-                if (enemy != null && enemy.tracking) {
-                    shapeRenderer.setColor(0.8f, 0.2f, 1f, 1);  // Purple for tracking
-                } else {
-                    shapeRenderer.setColor(1, 0.2f, 0.2f, 1);   // Red for stationary
-                }
-                shapeRenderer.rect(isoX - enemySize / 2, isoY - enemySize / 2, enemySize, enemySize);
             } else if (entityType == 2) {
-                // Chest
-                shapeRenderer.setColor(0.8f, 0.7f, 0.2f, 1);
-                shapeRenderer.rect(isoX - chestSize / 2, isoY - chestSize / 2, chestSize, chestSize);
+                // Chest sprite (48×40)
+                if (chestTexture != null) {
+                    spriteBatch.setColor(1, 1, 1, 1);
+                    spriteBatch.draw(chestTexture, isoX - 24, isoY - 20, 48, 40);
+                }
             }
+        }
+
+        spriteBatch.end();
+
+        // Draw shadows and interaction prompts with ShapeRenderer
+        shapeRenderer.setProjectionMatrix(camera.combined);
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+
+        // Player shadow when jumping
+        if (isJumping) {
+            float isoX = toIsoX(playerX, playerY);
+            float isoY = toIsoY(playerX, playerY);
+            float surfaceBelow = worldMap.isWall(playerX, playerY) ? WALL_HEIGHT : 0f;
+            float heightAbove = playerZ - surfaceBelow;
+            float shadowScale = Math.max(0.4f, 1f - heightAbove / 60f);
+            float shadowR = PLAYER_RADIUS * shadowScale;
+            float shadowIsoY = toIsoY(playerX, playerY) + surfaceBelow * 0.5f;
+            shapeRenderer.setColor(0.05f, 0.1f, 0.05f, 0.6f);
+            shapeRenderer.rect(isoX - shadowR, shadowIsoY - shadowR, shadowR * 2, shadowR * 2);
         }
 
         // [E] popup box above nearby entity
         if (nearby != null) {
             float ex = toIsoX(nearby.x, nearby.y);
-            float ey = toIsoY(nearby.x, nearby.y) + enemySize / 2 + 4f;
+            float ey = toIsoY(nearby.x, nearby.y) + 12f; // Above enemy sprite
             shapeRenderer.setColor(0.1f, 0.1f, 0.1f, 1);
             shapeRenderer.rect(ex - 16, ey - 1, 32, 20);
             shapeRenderer.setColor(1, 1, 0.8f, 1);
             shapeRenderer.rect(ex - 15, ey, 30, 18);
         } else if (nearbyChest != null) {
             float cx = toIsoX(nearbyChest.x, nearbyChest.y);
-            float cy = toIsoY(nearbyChest.x, nearbyChest.y) + chestSize / 2 + 4f;
+            float cy = toIsoY(nearbyChest.x, nearbyChest.y) + 12f; // Above chest sprite
             shapeRenderer.setColor(0.1f, 0.1f, 0.1f, 1);
             shapeRenderer.rect(cx - 16, cy - 1, 32, 20);
             shapeRenderer.setColor(1, 1, 0.8f, 1);
@@ -406,7 +417,7 @@ public class WorldScreen implements Screen, InputProcessor {
             // [E] label projected to HUD space
             if (nearby != null) {
                 float isoEx = toIsoX(nearby.x, nearby.y);
-                float isoEy = toIsoY(nearby.x, nearby.y) + enemySize / 2 + 18f;
+                float isoEy = toIsoY(nearby.x, nearby.y) + 30f; // Above enemy sprite
                 float hudX = isoEx - camera.position.x + 900f;
                 float hudY = isoEy - camera.position.y + 500f;
                 font.setColor(0.1f, 0.1f, 0.1f, 1);
@@ -414,7 +425,7 @@ public class WorldScreen implements Screen, InputProcessor {
                 font.setColor(1, 1, 1, 1);
             } else if (nearbyChest != null) {
                 float isoCx = toIsoX(nearbyChest.x, nearbyChest.y);
-                float isoCy = toIsoY(nearbyChest.x, nearbyChest.y) + chestSize / 2 + 18f;
+                float isoCy = toIsoY(nearbyChest.x, nearbyChest.y) + 30f; // Above chest sprite
                 float hudX = isoCx - camera.position.x + 900f;
                 float hudY = isoCy - camera.position.y + 500f;
                 font.setColor(0.1f, 0.1f, 0.1f, 1);

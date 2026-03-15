@@ -32,6 +32,8 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private OrthographicCamera hudCam;
     private Texture[] grassTextures;
     private Texture[] wallTextures;
+    private Texture enemyTexture;
+    private Texture chestTexture;
 
     // Iso rendering constants (must match WorldScreen)
     private static final int ISO_TW      = 64;
@@ -146,6 +148,10 @@ public class MapEditorScreen implements Screen, InputProcessor {
                     wallTextures[i] = new Texture("wall" + i + ".png");
                     wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 }
+                enemyTexture = new Texture("enemy.png");
+                enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                chestTexture = new Texture("chest.png");
+                chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -299,27 +305,35 @@ public class MapEditorScreen implements Screen, InputProcessor {
             shapeRenderer.end();
         }
 
-        // Enemies (red squares)
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(1, 0.2f, 0.2f, 1);
-        float enemySize = WorldMap.TILE_SIZE * 0.6f;
-        for (EnemyNPC enemy : worldMap.getEnemies()) {
-            float ix = toIsoX(enemy.x, enemy.y);
-            float iy = toIsoY(enemy.x, enemy.y);
-            shapeRenderer.rect(ix - enemySize / 2, iy - enemySize / 2, enemySize, enemySize);
+        // Enemies (using sprite)
+        if (enemyTexture != null) {
+            SpriteBatch entityBatch = new SpriteBatch();
+            entityBatch.setProjectionMatrix(camera.combined);
+            entityBatch.begin();
+            for (EnemyNPC enemy : worldMap.getEnemies()) {
+                float ix = toIsoX(enemy.x, enemy.y);
+                float iy = toIsoY(enemy.x, enemy.y);
+                entityBatch.setColor(1, 1, 1, 1);
+                entityBatch.draw(enemyTexture, ix - 16, iy - 24, 32, 48);
+            }
+            entityBatch.end();
+            entityBatch.dispose();
         }
-        shapeRenderer.end();
 
-        // Chests (gold squares)
-        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-        shapeRenderer.setColor(0.8f, 0.7f, 0.2f, 1);
-        float chestSize = WorldMap.TILE_SIZE * 0.5f;
-        for (Chest chest : worldMap.getChests()) {
-            float ix = toIsoX(chest.x, chest.y);
-            float iy = toIsoY(chest.x, chest.y);
-            shapeRenderer.rect(ix - chestSize / 2, iy - chestSize / 2, chestSize, chestSize);
+        // Chests (using sprite)
+        if (chestTexture != null) {
+            SpriteBatch entityBatch = new SpriteBatch();
+            entityBatch.setProjectionMatrix(camera.combined);
+            entityBatch.begin();
+            for (Chest chest : worldMap.getChests()) {
+                float ix = toIsoX(chest.x, chest.y);
+                float iy = toIsoY(chest.x, chest.y);
+                entityBatch.setColor(1, 1, 1, 1);
+                entityBatch.draw(chestTexture, ix - 24, iy - 20, 48, 40);
+            }
+            entityBatch.end();
+            entityBatch.dispose();
         }
-        shapeRenderer.end();
 
         Gdx.gl.glDisable(GL20.GL_BLEND);
 
