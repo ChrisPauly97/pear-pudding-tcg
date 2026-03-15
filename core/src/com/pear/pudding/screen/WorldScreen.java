@@ -55,6 +55,7 @@ public class WorldScreen implements Screen, InputProcessor {
     private static final float JUMP_VELOCITY = 280f;
     private static final float GRAVITY = -600f;
     private static final float WALL_HEIGHT = 24f;
+    private static final int CLIMBABLE_HEIGHT = 1;  // Max wall height you can walk onto without jumping
 
     // Isometric rendering constants
     private static final int ISO_TW     = 64;   // tile diamond width
@@ -277,7 +278,9 @@ public class WorldScreen implements Screen, InputProcessor {
         for (int i = 0; i < testPoints.length; i += 2) {
             float newX = testPoints[i] + dx;
             float newY = testPoints[i + 1] + dy;
-            if (worldMap.isWall(newX, newY)) return;
+            byte wallHeight = worldMap.getWallHeight(newX, newY);
+            // Block movement if wall is too tall to climb
+            if (wallHeight > CLIMBABLE_HEIGHT) return;
         }
 
         // Update player ground height based on new position

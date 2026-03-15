@@ -79,6 +79,10 @@ public class MapEditorScreen implements Screen, InputProcessor {
     // Wall height editing
     private static final int MAX_WALL_HEIGHT = 5;
 
+    // Track last painted tile to prevent double-painting during drag
+    private int lastPaintedTileX = -1;
+    private int lastPaintedTileY = -1;
+
     public MapEditorScreen(MyGame game) {
         this.game = game;
         this.worldMap = new WorldMap();
@@ -343,34 +347,58 @@ public class MapEditorScreen implements Screen, InputProcessor {
             shapeRenderer.end();
         }
 
-        // Enemies (using sprite)
-        if (enemyTexture != null) {
-            SpriteBatch entityBatch = new SpriteBatch();
-            entityBatch.setProjectionMatrix(camera.combined);
-            entityBatch.begin();
-            for (EnemyNPC enemy : worldMap.getEnemies()) {
-                float ix = toIsoX(enemy.x, enemy.y);
-                float iy = toIsoY(enemy.x, enemy.y);
-                entityBatch.setColor(1, 1, 1, 1);
-                entityBatch.draw(enemyTexture, ix - 16, iy - 24, 32, 48);
+        // Enemies (using sprite, with debug fallback)
+        if (worldMap.getEnemies().size() > 0) {
+            if (enemyTexture != null) {
+                SpriteBatch entityBatch = new SpriteBatch();
+                entityBatch.setProjectionMatrix(camera.combined);
+                entityBatch.begin();
+                for (EnemyNPC enemy : worldMap.getEnemies()) {
+                    float ix = toIsoX(enemy.x, enemy.y);
+                    float iy = toIsoY(enemy.x, enemy.y);
+                    entityBatch.setColor(1, 1, 1, 1);
+                    entityBatch.draw(enemyTexture, ix - 16, iy - 24, 32, 48);
+                }
+                entityBatch.end();
+                entityBatch.dispose();
+            } else {
+                // Debug fallback: draw red circles if texture missing
+                shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+                for (EnemyNPC enemy : worldMap.getEnemies()) {
+                    float ix = toIsoX(enemy.x, enemy.y);
+                    float iy = toIsoY(enemy.x, enemy.y);
+                    shapeRenderer.setColor(1, 0, 0, 1);
+                    shapeRenderer.circle(ix, iy, 16);
+                }
+                shapeRenderer.end();
             }
-            entityBatch.end();
-            entityBatch.dispose();
         }
 
-        // Chests (using sprite)
-        if (chestTexture != null) {
-            SpriteBatch entityBatch = new SpriteBatch();
-            entityBatch.setProjectionMatrix(camera.combined);
-            entityBatch.begin();
-            for (Chest chest : worldMap.getChests()) {
-                float ix = toIsoX(chest.x, chest.y);
-                float iy = toIsoY(chest.x, chest.y);
-                entityBatch.setColor(1, 1, 1, 1);
-                entityBatch.draw(chestTexture, ix - 24, iy - 20, 48, 40);
+        // Chests (using sprite, with debug fallback)
+        if (worldMap.getChests().size() > 0) {
+            if (chestTexture != null) {
+                SpriteBatch entityBatch = new SpriteBatch();
+                entityBatch.setProjectionMatrix(camera.combined);
+                entityBatch.begin();
+                for (Chest chest : worldMap.getChests()) {
+                    float ix = toIsoX(chest.x, chest.y);
+                    float iy = toIsoY(chest.x, chest.y);
+                    entityBatch.setColor(1, 1, 1, 1);
+                    entityBatch.draw(chestTexture, ix - 24, iy - 20, 48, 40);
+                }
+                entityBatch.end();
+                entityBatch.dispose();
+            } else {
+                // Debug fallback: draw yellow rectangles if texture missing
+                shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+                for (Chest chest : worldMap.getChests()) {
+                    float ix = toIsoX(chest.x, chest.y);
+                    float iy = toIsoY(chest.x, chest.y);
+                    shapeRenderer.setColor(1, 1, 0, 1);
+                    shapeRenderer.rect(ix - 24, iy - 20, 48, 40);
+                }
+                shapeRenderer.end();
             }
-            entityBatch.end();
-            entityBatch.dispose();
         }
 
         Gdx.gl.glDisable(GL20.GL_BLEND);
@@ -447,6 +475,14 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private void paintTile() {
         if (hoverTileX < 0 || hoverTileY < 0 || hoverTileX >= WorldMap.MAP_WIDTH || hoverTileY >= WorldMap.MAP_HEIGHT)
             return;
+
+        // Skip if we already painted this tile this frame (prevents double-painting during drag)
+        if (lastPaintedTileX == hoverTileX && lastPaintedTileY == hoverTileY)
+            return;
+
+        lastPaintedTileX = hoverTileX;
+        lastPaintedTileY = hoverTileY;
+
         int tx = hoverTileX;
         int ty = hoverTileY;
         switch (currentBrush) {
@@ -467,7 +503,7 @@ public class MapEditorScreen implements Screen, InputProcessor {
             case ENEMY: {
                 float wx = tx * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
                 float wy = ty * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
-                worldMap.addEnemy(new EnemyNPC("enemy_" + System.nanoTime(), wx, wy));
+                worldMap.addEnemy(new EnemyNPC("enemy_" + System.nanoTime(), wx, wy, true));
                 break;
             }
             case CHEST: {
@@ -491,6 +527,14 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private void eraseTile() {
         if (hoverTileX < 0 || hoverTileY < 0 || hoverTileX >= WorldMap.MAP_WIDTH || hoverTileY >= WorldMap.MAP_HEIGHT)
             return;
+
+        // Skip if we already erased this tile this frame
+        if (lastPaintedTileX == hoverTileX && lastPaintedTileY == hoverTileY)
+            return;
+
+        lastPaintedTileX = hoverTileX;
+        lastPaintedTileY = hoverTileY;
+
         float wx = hoverTileX * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
         float wy = hoverTileY * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
         Chest nearbyChest = worldMap.findNearbChest(wx, wy, WorldMap.TILE_SIZE);
