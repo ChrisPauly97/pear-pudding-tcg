@@ -55,12 +55,17 @@ public class WorldScreen implements Screen, InputProcessor {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
+    }
 
-        // Load font from skin
+    private void ensureFontLoaded() {
         if (font == null) {
-            game.manager.finishLoading();
-            Skin skin = game.manager.get("uiskin.json", Skin.class);
-            font = skin.getFont("default");
+            try {
+                game.manager.finishLoading();
+                Skin skin = game.manager.get("uiskin.json", Skin.class);
+                font = skin.getFont("default");
+            } catch (Exception e) {
+                // Font will be loaded next frame
+            }
         }
     }
 
@@ -171,6 +176,9 @@ public class WorldScreen implements Screen, InputProcessor {
         shapeRenderer.rect(playerX - PLAYER_RADIUS, playerY - PLAYER_RADIUS, PLAYER_RADIUS * 2, PLAYER_RADIUS * 2);
 
         shapeRenderer.end();
+
+        // Ensure font is loaded
+        ensureFontLoaded();
 
         // Draw HUD (screen-space)
         if (font != null) {
