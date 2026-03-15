@@ -409,9 +409,8 @@ public class WorldScreen implements Screen, InputProcessor {
                     // Check adjacent walls to determine which faces are exposed
                     byte leftWallHeight = worldMap.getHeight(tx - 1, ty);
                     byte rightWallHeight = worldMap.getHeight(tx + 1, ty);
-                    byte topWallHeight = worldMap.getHeight(tx, ty + 1);
 
-                    // Draw each level of the wall
+                    // Draw each level of the wall (only visible side faces)
                     for (int level = 0; level < wallHeight; level++) {
                         float levelOffsetY = level * WALL_FACE_H;
 
@@ -429,12 +428,6 @@ public class WorldScreen implements Screen, InputProcessor {
                             float rightY = sy + ISO_HALF_H + levelOffsetY;
                             worldBatch.setColor(0.65f, 0.65f, 0.65f, 1);
                             worldBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
-                        }
-
-                        // Front face - only if no adjacent wall at same height
-                        if (topWallHeight < wallHeight) {
-                            worldBatch.setColor(0.75f, 0.75f, 0.75f, 1);
-                            worldBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
                         }
                     }
 
@@ -475,12 +468,11 @@ public class WorldScreen implements Screen, InputProcessor {
 
             if (entityType == 0) {
                 // Player sprite (32×48)
-                // In isometric space, vertical jump moves diagonally on screen: up-left
-                float visualOffsetY = playerZ * 0.5f;      // Move up on screen
-                float visualOffsetX = -playerZ * 0.25f;    // Move left on screen (iso perspective)
+                // In isometric space with fixed camera, vertical jump goes straight up
+                float visualOffsetY = playerZ * 0.5f;
                 if (playerTexture != null) {
                     worldBatch.setColor(1, 1, 1, 1);
-                    worldBatch.draw(playerTexture, isoX - 16 + visualOffsetX, isoY - 24 + visualOffsetY, 32, 48);
+                    worldBatch.draw(playerTexture, isoX - 16, isoY - 24 + visualOffsetY, 32, 48);
                 }
             } else if (entityType == 1) {
                 // Enemy sprite (32×48)
@@ -520,9 +512,8 @@ public class WorldScreen implements Screen, InputProcessor {
             float shadowHeight = 8f * shadowScale;    // ~8-3px tall at ground level
 
             // Position shadow on ground plane, directly below player
-            // Shadow stays on ground (doesn't move with jump), but shifts with diagonal jump projection
-            float visualOffsetX = -playerZ * 0.25f;    // Match jump diagonal offset
-            float shadowIsoX = isoX - shadowWidth + visualOffsetX;  // Account for iso jump shift
+            // Shadow stays fixed on ground (jump doesn't move X/Y)
+            float shadowIsoX = isoX - shadowWidth;     // Centered horizontally
             float shadowIsoY = isoY - 12f;             // Fixed on ground plane
 
             shapeRenderer.setColor(0.05f, 0.1f, 0.05f, shadowAlpha);
