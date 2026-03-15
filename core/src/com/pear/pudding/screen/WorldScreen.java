@@ -511,16 +511,18 @@ public class WorldScreen implements Screen, InputProcessor {
             // Shadow scales with height (fades as player jumps higher)
             float shadowScale = Math.max(0.3f, 1f - heightAbove / 80f);
 
-            // In isometric space: width is 2x height for proper perspective
-            float shadowWidth = PLAYER_RADIUS * shadowScale * 2f;   // horizontal (x-axis in iso)
-            float shadowHeight = PLAYER_RADIUS * shadowScale * 0.8f; // vertical (y-axis in iso)
+            // In isometric space: shadow needs to be stretched horizontally (wider) and compressed vertically
+            // to match the isometric diamond perspective
+            float isoShadowWidth = PLAYER_RADIUS * shadowScale * 2.5f;   // wider for iso perspective
+            float isoShadowHeight = PLAYER_RADIUS * shadowScale * 0.6f;  // narrower for iso perspective
 
-            // Position on ground plane
-            float shadowIsoY = isoY - PLAYER_RADIUS * 0.5f;
+            // Position shadow on ground plane, directly below player feet in iso space
+            // Player sprite is at isoY - 24 to isoY + 24, so ground is around isoY + 20
+            float shadowIsoY = isoY + PLAYER_RADIUS * 1.5f;
 
             shapeRenderer.setColor(0.05f, 0.1f, 0.05f, shadowAlpha);
-            // Draw shadow as a wider ellipse to match isometric perspective
-            shapeRenderer.ellipse(isoX - shadowWidth, shadowIsoY - shadowHeight, shadowWidth * 2, shadowHeight * 2);
+            // Draw shadow centered on player's iso position with proper isometric proportions
+            shapeRenderer.ellipse(isoX, shadowIsoY, isoShadowWidth * 2, isoShadowHeight * 2);
         }
 
         // [E] popup box above nearby entity
