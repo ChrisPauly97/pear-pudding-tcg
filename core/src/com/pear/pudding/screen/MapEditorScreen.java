@@ -12,6 +12,8 @@ import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
+import com.badlogic.gdx.scenes.scene2d.ui.List;
+import com.badlogic.gdx.scenes.scene2d.ui.ScrollPane;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
@@ -931,6 +933,25 @@ public class MapEditorScreen implements Screen, InputProcessor {
 
         dialog.getContentTable().add("Target map (empty=exit)").padRight(10);
         dialog.getContentTable().add(targetField).width(200).row();
+
+        // Add available maps list
+        if (!mapNames.isEmpty()) {
+            dialog.getContentTable().add("Available maps:").padTop(10).row();
+            List<String> mapList = new List<String>(skin);
+            mapList.setItems(mapNames.toArray(new String[0]));
+            mapList.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    String selected = mapList.getSelected();
+                    if (selected != null) {
+                        targetField.setText(selected);
+                    }
+                }
+            });
+            ScrollPane scrollPane = new ScrollPane(mapList);
+            dialog.getContentTable().add(scrollPane).width(200).height(150).row();
+        }
+
         dialog.button("OK", true);
         dialog.button("Cancel", false);
         dialog.key(com.badlogic.gdx.Input.Keys.ENTER, true);
