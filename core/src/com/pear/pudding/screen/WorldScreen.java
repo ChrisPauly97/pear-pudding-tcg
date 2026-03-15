@@ -49,16 +49,19 @@ public class WorldScreen implements Screen, InputProcessor {
         // Initialize rendering
         hudBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
-
-        // Get font from skin
-        game.manager.finishLoading();
-        Skin skin = game.manager.get("uiskin.json", Skin.class);
-        font = skin.getFont("default");
+        font = null;  // Will be loaded in show()
     }
 
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
+
+        // Load font from skin
+        if (font == null) {
+            game.manager.finishLoading();
+            Skin skin = game.manager.get("uiskin.json", Skin.class);
+            font = skin.getFont("default");
+        }
     }
 
     @Override
@@ -170,28 +173,30 @@ public class WorldScreen implements Screen, InputProcessor {
         shapeRenderer.end();
 
         // Draw HUD (screen-space)
-        hudBatch.setProjectionMatrix(new OrthographicCamera(1800, 1000).combined);
-        hudBatch.begin();
+        if (font != null) {
+            hudBatch.setProjectionMatrix(new OrthographicCamera(1800, 1000).combined);
+            hudBatch.begin();
 
-        // Movement hint
-        font.draw(hudBatch, "WASD/Arrows to move", 20, 980);
+            // Movement hint
+            font.draw(hudBatch, "WASD/Arrows to move", 20, 980);
 
-        // Check for nearby enemy
-        EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
-        if (nearby != null) {
-            font.setColor(1, 1, 0, 1);  // Yellow
-            font.draw(hudBatch, "Press E/Space to battle!", 20, 950);
-            font.setColor(1, 1, 1, 1);  // Reset to white
+            // Check for nearby enemy
+            EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
+            if (nearby != null) {
+                font.setColor(1, 1, 0, 1);  // Yellow
+                font.draw(hudBatch, "Press E/Space to battle!", 20, 950);
+                font.setColor(1, 1, 1, 1);  // Reset to white
+            }
+
+            // Count remaining enemies
+            int aliveCount = 0;
+            for (EnemyNPC e : worldMap.getEnemies()) {
+                if (e.alive) aliveCount++;
+            }
+            font.draw(hudBatch, "Enemies remaining: " + aliveCount, 20, 920);
+
+            hudBatch.end();
         }
-
-        // Count remaining enemies
-        int aliveCount = 0;
-        for (EnemyNPC e : worldMap.getEnemies()) {
-            if (e.alive) aliveCount++;
-        }
-        font.draw(hudBatch, "Enemies remaining: " + aliveCount, 20, 920);
-
-        hudBatch.end();
     }
 
     @Override
