@@ -454,7 +454,15 @@ public class MapEditorScreen implements Screen, InputProcessor {
                 worldMap.setTile(tx, ty, (byte) 0);
                 break;
             case WALL:
-                worldMap.setTile(tx, ty, (byte) 1);
+                // If already a wall, increase height; otherwise create new wall
+                if (worldMap.getTile(tx, ty) != 0) {
+                    byte currentHeight = worldMap.getHeight(tx, ty);
+                    byte newHeight = (byte) Math.min(MAX_WALL_HEIGHT, currentHeight + 1);
+                    worldMap.setHeight(tx, ty, newHeight);
+                } else {
+                    worldMap.setTile(tx, ty, (byte) 1);
+                    worldMap.setHeight(tx, ty, (byte) 1);
+                }
                 break;
             case ENEMY: {
                 float wx = tx * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
@@ -491,8 +499,20 @@ public class MapEditorScreen implements Screen, InputProcessor {
             return;
         }
         EnemyNPC nearby = worldMap.findNearbyEnemy(wx, wy, WorldMap.TILE_SIZE);
-        if (nearby != null) worldMap.removeEnemy(nearby);
-        else worldMap.setTile(hoverTileX, hoverTileY, (byte) 0);
+        if (nearby != null) {
+            worldMap.removeEnemy(nearby);
+            return;
+        }
+
+        // If hovering over a wall, decrease height instead of removing
+        if (worldMap.getTile(hoverTileX, hoverTileY) != 0) {
+            byte currentHeight = worldMap.getHeight(hoverTileX, hoverTileY);
+            if (currentHeight > 1) {
+                worldMap.setHeight(hoverTileX, hoverTileY, (byte) (currentHeight - 1));
+            } else {
+                worldMap.setTile(hoverTileX, hoverTileY, (byte) 0);  // Remove wall if height reaches 0
+            }
+        }
     }
 
     @Override

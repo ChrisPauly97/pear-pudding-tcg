@@ -83,16 +83,15 @@ public class WorldMap {
             heights[y][25] = 1;
         }
 
-        // Place 8 enemies at hardcoded grass positions, ~10% tracking
-        Random rand = new Random();
-        enemies.add(new EnemyNPC("enemy1", 20 * TILE_SIZE, 15 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy2", 80 * TILE_SIZE, 20 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy3", 50 * TILE_SIZE, 35 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy4", 15 * TILE_SIZE, 60 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy5", 85 * TILE_SIZE, 65 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy6", 40 * TILE_SIZE, 80 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy7", 70 * TILE_SIZE, 45 * TILE_SIZE, rand.nextDouble() < 0.1));
-        enemies.add(new EnemyNPC("enemy8", 30 * TILE_SIZE, 75 * TILE_SIZE, rand.nextDouble() < 0.1));
+        // Place 8 enemies at hardcoded grass positions with tracking enabled
+        enemies.add(new EnemyNPC("enemy1", 20 * TILE_SIZE, 15 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy2", 80 * TILE_SIZE, 20 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy3", 50 * TILE_SIZE, 35 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy4", 15 * TILE_SIZE, 60 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy5", 85 * TILE_SIZE, 65 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy6", 40 * TILE_SIZE, 80 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy7", 70 * TILE_SIZE, 45 * TILE_SIZE, true));
+        enemies.add(new EnemyNPC("enemy8", 30 * TILE_SIZE, 75 * TILE_SIZE, true));
 
         // Place 4 chests at hardcoded grass positions with random card rewards
         String[] cardIds = {"ghost", "skeleton", "zombie", "ghoul"};
@@ -327,7 +326,7 @@ public class WorldMap {
                     if (parts.length >= 3) {
                         float x = Float.parseFloat(parts[1]);
                         float y = Float.parseFloat(parts[2]);
-                        enemies.add(new EnemyNPC("enemy_" + System.currentTimeMillis() + "_" + i, x, y));
+                        enemies.add(new EnemyNPC("enemy_" + System.currentTimeMillis() + "_" + i, x, y, true));
                     }
                 } else if (line.startsWith("CHEST ")) {
                     String[] parts = line.split(" ");
