@@ -12,7 +12,10 @@
       "Bash(timeout 10 gradle desktop:run:*)",
       "Bash(gradle desktop:dist:*)",
       "Bash(git:*)",
-      "Bash(xargs basename:*)"
+      "Bash(xargs basename:*)",
+      "Bash(javac:*)",
+      "Bash(ls:*)",
+      "Bash(pkill:*)"
     ]
   }
 }

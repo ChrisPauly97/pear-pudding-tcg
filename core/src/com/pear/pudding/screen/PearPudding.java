@@ -296,7 +296,7 @@ public class PearPudding implements Screen, InputProcessor {
 
     @Override
     public void hide() {
-
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override

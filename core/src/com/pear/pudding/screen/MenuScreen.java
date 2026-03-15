@@ -65,6 +65,7 @@ public class MenuScreen implements Screen {
 
         //Create buttons
         TextButton playButton = new TextButton("Play", skin);
+        TextButton editorButton = new TextButton("Map Editor", skin);
         TextButton optionsButton = new TextButton("Options", skin);
         TextButton exitButton = new TextButton("Exit", skin);
         //Add listeners to buttons
@@ -72,6 +73,12 @@ public class MenuScreen implements Screen {
             @Override
             public void clicked(InputEvent event, float x, float y) {
                 game.setScreen(new WorldScreen(game));
+            }
+        });
+        editorButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                game.setScreen(new MapEditorScreen(game));
             }
         });
         optionsButton.addListener(new ClickListener() {
@@ -89,6 +96,8 @@ public class MenuScreen implements Screen {
 
         //Add buttons to table
         mainTable.add(playButton).width(WINDOW_WIDTH/3).height(WINDOW_HEIGHT/6);
+        mainTable.row();
+        mainTable.add(editorButton).width(WINDOW_WIDTH/3).height(WINDOW_HEIGHT/6);
         mainTable.row();
         mainTable.add(optionsButton).width(WINDOW_WIDTH/3).height(WINDOW_HEIGHT/6);
         mainTable.row();
@@ -126,7 +135,7 @@ public class MenuScreen implements Screen {
 
     @Override
     public void hide() {
-
+        Gdx.input.setInputProcessor(null);
     }
 
     @Override

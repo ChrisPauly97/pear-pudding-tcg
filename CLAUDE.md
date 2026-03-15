@@ -78,3 +78,24 @@ Both Board and Hand implement `handleHover(mouseCoords)` which calls `rebalance(
 1. `playCards()` — plays affordable cards to board
 2. `attackWithMinions()` — attacks enemy minions/hero
 3. `endAITurn()` — ends turn, starts player1's turn
+
+## Screen Lifecycle
+
+**CRITICAL: UI must always be created in `show()`, never in the constructor.**
+
+LibGDX screens have a lifecycle: constructor → `setScreen()` → `show()` → `render()`. Assets (textures, fonts, skins) are only guaranteed to be available *after* `show()` is called. If you try to load UI elements in the constructor, asset managers may not have finished loading yet, causing exceptions.
+
+**Pattern:**
+```java
+public MyScreen(MyGame game, ...) {
+    this.game = game;
+    // Initialize fields and simple objects only
+    // DO NOT call createUI() here
+}
+
+@Override
+public void show() {
+    // NOW safe to load assets and create UI
+    createUI();
+}
+```
