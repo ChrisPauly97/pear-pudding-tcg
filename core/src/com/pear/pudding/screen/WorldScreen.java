@@ -475,10 +475,12 @@ public class WorldScreen implements Screen, InputProcessor {
 
             if (entityType == 0) {
                 // Player sprite (32×48)
-                float visualOffsetY = playerZ * 0.5f;
+                // In isometric space, vertical jump moves diagonally on screen: up-left
+                float visualOffsetY = playerZ * 0.5f;      // Move up on screen
+                float visualOffsetX = -playerZ * 0.25f;    // Move left on screen (iso perspective)
                 if (playerTexture != null) {
                     worldBatch.setColor(1, 1, 1, 1);
-                    worldBatch.draw(playerTexture, isoX - 16, isoY - 24 + visualOffsetY, 32, 48);
+                    worldBatch.draw(playerTexture, isoX - 16 + visualOffsetX, isoY - 24 + visualOffsetY, 32, 48);
                 }
             } else if (entityType == 1) {
                 // Enemy sprite (32×48)
@@ -518,9 +520,10 @@ public class WorldScreen implements Screen, InputProcessor {
             float shadowHeight = 8f * shadowScale;    // ~8-3px tall at ground level
 
             // Position shadow on ground plane, directly below player
-            // Shadow should be on the ground at player's base, not moving with jump
-            float shadowIsoX = isoX - shadowWidth;     // Centered horizontally
-            float shadowIsoY = isoY - 12f;             // Below player in iso space
+            // Shadow stays on ground (doesn't move with jump), but shifts with diagonal jump projection
+            float visualOffsetX = -playerZ * 0.25f;    // Match jump diagonal offset
+            float shadowIsoX = isoX - shadowWidth + visualOffsetX;  // Account for iso jump shift
+            float shadowIsoY = isoY - 12f;             // Fixed on ground plane
 
             shapeRenderer.setColor(0.05f, 0.1f, 0.05f, shadowAlpha);
             // Draw shadow as a small ellipse with proper iso proportions
