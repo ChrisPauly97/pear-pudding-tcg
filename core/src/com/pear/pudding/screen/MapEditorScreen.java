@@ -84,6 +84,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private int lastPaintedTileX = -1;
     private int lastPaintedTileY = -1;
 
+    // Pooled Vector3 to avoid per-frame allocations
+    private final com.badlogic.gdx.math.Vector3 screenVec = new com.badlogic.gdx.math.Vector3();
+
     public MapEditorScreen(MyGame game) {
         this.game = game;
         this.worldMap = new WorldMap();
@@ -225,14 +228,16 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private void updateHoverTile(int screenX, int screenY) {
         if (screenX < 0 || screenY < 0) { hoverTileX = -1; hoverTileY = -1; return; }
 
-        // Suppress hover when over toolbar
-        Vector3 hudPos = hudCam.unproject(new Vector3(screenX, screenY, 0));
-        if (hudPos.y > (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) { hoverTileX = -1; hoverTileY = -1; return; }
+        // Suppress hover when over toolbar (reuse pooled vector)
+        screenVec.set(screenX, screenY, 0);
+        hudCam.unproject(screenVec);
+        if (screenVec.y > (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) { hoverTileX = -1; hoverTileY = -1; return; }
 
-        // Unproject through world camera → iso world → tile coords
-        Vector3 worldPos = camera.unproject(new Vector3(screenX, screenY, 0));
-        hoverTileX = (int) Math.floor(isoToTileX(worldPos.x, worldPos.y));
-        hoverTileY = (int) Math.floor(isoToTileY(worldPos.x, worldPos.y));
+        // Unproject through world camera → iso world → tile coords (reuse pooled vector)
+        screenVec.set(screenX, screenY, 0);
+        camera.unproject(screenVec);
+        hoverTileX = (int) Math.floor(isoToTileX(screenVec.x, screenVec.y));
+        hoverTileY = (int) Math.floor(isoToTileY(screenVec.x, screenVec.y));
     }
 
     private void draw() {
@@ -586,9 +591,10 @@ public class MapEditorScreen implements Screen, InputProcessor {
         lastMouseY = screenY;
         updateHoverTile(screenX, screenY);
 
-        Vector3 hudPos = hudCam.unproject(new Vector3(screenX, screenY, 0));
-        if (hudPos.y > (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) {
-            handleToolbarClick((int) hudPos.x);
+        screenVec.set(screenX, screenY, 0);
+        hudCam.unproject(screenVec);
+        if (screenVec.y > (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) {
+            handleToolbarClick((int) screenVec.x);
             return true;
         }
 
@@ -605,8 +611,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
         lastMouseX = screenX;
         lastMouseY = screenY;
         updateHoverTile(screenX, screenY);
-        Vector3 hudPos = hudCam.unproject(new Vector3(screenX, screenY, 0));
-        if (hudPos.y <= (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) paintTile();
+        screenVec.set(screenX, screenY, 0);
+        hudCam.unproject(screenVec);
+        if (screenVec.y <= (WINDOW_HEIGHT - TOOLBAR_HEIGHT)) paintTile();
         return false;
     }
 

@@ -44,6 +44,9 @@ public class WorldScreen implements Screen, InputProcessor {
     private Texture chestTexture;
     private Sound footstepSound;
 
+    // Pooled collections for rendering (reused every frame to avoid allocations)
+    private final List<float[]> entitiesPool = new ArrayList<>();
+
     private float playerX = 50 * WorldMap.TILE_SIZE;
     private float playerY = 15 * WorldMap.TILE_SIZE;
     private boolean moveUp, moveDown, moveLeft, moveRight;
@@ -392,22 +395,23 @@ public class WorldScreen implements Screen, InputProcessor {
         EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
         Chest nearbyChest = worldMap.findNearbChest(playerX, playerY, INTERACT_RANGE);
 
-        List<float[]> entities = new ArrayList<>();
-        entities.add(new float[]{playerX, playerY, 0}); // 0 = player
+        // Reuse pooled collection to avoid per-frame allocation
+        entitiesPool.clear();
+        entitiesPool.add(new float[]{playerX, playerY, 0}); // 0 = player
         for (EnemyNPC e : worldMap.getEnemies()) {
-            if (e.alive) entities.add(new float[]{e.x, e.y, 1}); // 1 = enemy
+            if (e.alive) entitiesPool.add(new float[]{e.x, e.y, 1}); // 1 = enemy
         }
         for (Chest c : worldMap.getChests()) {
-            if (!c.opened) entities.add(new float[]{c.x, c.y, 2}); // 2 = chest
+            if (!c.opened) entitiesPool.add(new float[]{c.x, c.y, 2}); // 2 = chest
         }
         // Sort descending by isoY: furthest (highest isoY) drawn first
-        entities.sort((a, b) -> Float.compare(toIsoY(b[0], b[1]), toIsoY(a[0], a[1])));
+        entitiesPool.sort((a, b) -> Float.compare(toIsoY(b[0], b[1]), toIsoY(a[0], a[1])));
 
         // Draw sprites with worldBatch
         worldBatch.setProjectionMatrix(camera.combined);
         worldBatch.begin();
 
-        for (float[] ent : entities) {
+        for (float[] ent : entitiesPool) {
             float isoX = toIsoX(ent[0], ent[1]);
             float isoY = toIsoY(ent[0], ent[1]);
             int entityType = (int) ent[2];

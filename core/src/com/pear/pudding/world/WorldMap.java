@@ -22,6 +22,8 @@ public class WorldMap {
     private int playerSpawnX = -1;  // -1 means not set
     private int playerSpawnY = -1;
 
+    private static final Random WORLD_RAND = new Random(12345);  // Seeded for reproducibility
+
     public WorldMap() {
         tiles = new byte[MAP_HEIGHT][MAP_WIDTH];
         heights = new byte[MAP_HEIGHT][MAP_WIDTH];
@@ -83,22 +85,50 @@ public class WorldMap {
             heights[y][25] = 1;
         }
 
-        // Place 8 enemies at hardcoded grass positions with tracking enabled
-        enemies.add(new EnemyNPC("enemy1", 20 * TILE_SIZE, 15 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy2", 80 * TILE_SIZE, 20 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy3", 50 * TILE_SIZE, 35 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy4", 15 * TILE_SIZE, 60 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy5", 85 * TILE_SIZE, 65 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy6", 40 * TILE_SIZE, 80 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy7", 70 * TILE_SIZE, 45 * TILE_SIZE, true));
-        enemies.add(new EnemyNPC("enemy8", 30 * TILE_SIZE, 75 * TILE_SIZE, true));
+        // Procedurally place enemies and chests with difficulty scaling
+        // Difficulty increases from top-left (easier) to bottom-right (harder)
+        generateEntitiesWithDifficulty();
+    }
 
-        // Place 4 chests at hardcoded grass positions with random card rewards
+    /**
+     * Generate enemies and chests procedurally with difficulty scaling.
+     * Difficulty increases from top-left (depth 0) to bottom-right (depth max).
+     */
+    private void generateEntitiesWithDifficulty() {
         String[] cardIds = {"ghost", "skeleton", "zombie", "ghoul"};
-        chests.add(new Chest("chest1", 35 * TILE_SIZE, 25 * TILE_SIZE, cardIds[0]));
-        chests.add(new Chest("chest2", 65 * TILE_SIZE, 55 * TILE_SIZE, cardIds[1]));
-        chests.add(new Chest("chest3", 25 * TILE_SIZE, 45 * TILE_SIZE, cardIds[2]));
-        chests.add(new Chest("chest4", 75 * TILE_SIZE, 75 * TILE_SIZE, cardIds[3]));
+        int maxDepth = MAP_WIDTH + MAP_HEIGHT - 2;
+
+        // Place 8 enemies across difficulty tiers
+        int enemyCount = 0;
+        for (int depth = 10; depth < maxDepth && enemyCount < 8; depth += (maxDepth - 20) / 8) {
+            int tx = WORLD_RAND.nextInt(Math.min(MAP_WIDTH - 2, depth + 1));
+            int ty = depth - tx;
+            if (ty < 1 || ty >= MAP_HEIGHT - 1 || tiles[ty][tx] != GRASS) continue;
+
+            float wx = tx * TILE_SIZE + TILE_SIZE / 2f;
+            float wy = ty * TILE_SIZE + TILE_SIZE / 2f;
+            enemies.add(new EnemyNPC("enemy_" + enemyCount, wx, wy, true));
+            enemyCount++;
+        }
+
+        // Place 4 chests at varying difficulties (easier ones early, harder ones late)
+        int chestCount = 0;
+        int[] chestDepths = {maxDepth / 4, maxDepth / 2, (maxDepth * 3) / 4, maxDepth - 10};
+        for (int targetDepth : chestDepths) {
+            if (chestCount >= 4) break;
+            int depth = targetDepth + WORLD_RAND.nextInt(10) - 5;  // Random variance
+            depth = Math.max(5, Math.min(maxDepth - 5, depth));
+
+            int tx = WORLD_RAND.nextInt(Math.min(MAP_WIDTH - 2, depth + 1));
+            int ty = depth - tx;
+            if (ty < 1 || ty >= MAP_HEIGHT - 1 || tiles[ty][tx] != GRASS) continue;
+
+            float wx = tx * TILE_SIZE + TILE_SIZE / 2f;
+            float wy = ty * TILE_SIZE + TILE_SIZE / 2f;
+            String cardId = cardIds[chestCount % cardIds.length];
+            chests.add(new Chest("chest_" + chestCount, wx, wy, cardId));
+            chestCount++;
+        }
     }
 
     public byte getTile(int tx, int ty) {

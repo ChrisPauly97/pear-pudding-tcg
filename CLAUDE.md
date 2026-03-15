@@ -66,8 +66,42 @@ Both Board and Hand implement `handleHover(mouseCoords)` which calls `rebalance(
 
 ## Input Handling
 
-`PearPudding` (the main game screen) implements `InputProcessor` directly and is registered via `InputMultiplexer`. Key methods:
+**Centralized via `InputController`** (package: `input/`)
 
+- All keybindings defined in `InputController` with sensible defaults (WASD + arrows, E interact, Space jump)
+- Supports rebinding at runtime via `setXxxKey()` methods
+- Screens call `controller.handleKeyDown/Up()` on key events
+- Screens poll `controller.moveUp/Down/Left/Right` state during update
+
+**Usage pattern:**
+```java
+private final InputController inputController = new InputController();
+
+@Override
+public boolean keyDown(int keycode) {
+    if (inputController.isInteractPressed(keycode)) {
+        handleInteract();
+        return true;
+    }
+    inputController.handleKeyDown(keycode);
+    return true;
+}
+
+@Override
+public boolean keyUp(int keycode) {
+    inputController.handleKeyUp(keycode);
+    return true;
+}
+
+private void update(float delta) {
+    float dx = 0, dy = 0;
+    if (inputController.moveUp) { dx += SPEED; dy += SPEED; }
+    if (inputController.moveDown) { dx -= SPEED; dy -= SPEED; }
+    // ... apply movement
+}
+```
+
+**Battle Input:** `PearPudding` implements `InputProcessor` directly for card drag-drop:
 - `touchDown` → `handleLeftClick` / `handleRightClick`
 - `handleHitCard(card)` — begins a drag via `startDragging` (board or hand) and snapshots the other deck
 - `touchDragged` — moves the card visually and drives hover animations
@@ -83,14 +117,28 @@ Both Board and Hand implement `handleHover(mouseCoords)` which calls `rebalance(
 ## Recent Improvements (March 2026)
 
 ### Fixed Technical Debt
-- **Asset Manager Integration:** All textures and audio now loaded via AssetManager at startup (AssetLoadingScreen). Eliminates manual `new Texture()` and silent load failures.
-- **SpriteBatch Pooling:** WorldScreen and MapEditorScreen now create SpriteBatch once in constructor, reuse across frames. Eliminated per-frame allocation/disposal.
+
+**Asset & Rendering:**
+- **Asset Manager Integration:** All textures and audio loaded via AssetManager at startup (AssetLoadingScreen). Eliminates manual `new Texture()` and silent load failures.
+- **SpriteBatch Pooling:** WorldScreen and MapEditorScreen create SpriteBatch once in constructor, reuse across frames. Eliminated per-frame allocation/disposal.
 - **Texture Disposal:** Screens no longer manually dispose textures (AssetManager owns lifetime). Cleaner dispose() methods.
 
+**Memory & Performance:**
+- **Entity List Pooling:** WorldScreen reuses `entitiesPool` List for rendering instead of `new ArrayList<>()` every frame.
+- **Vector3 Pooling:** MapEditorScreen uses single pooled `screenVec` for all unprojection instead of allocating per input event.
+- **Result:** Eliminated per-frame GC pressure in hot rendering loop.
+
+**Input & World Generation:**
+- **InputController:** Centralized keybinding system (input/ package) for rebindable controls. Supports WASD + arrows, E interact, Space jump.
+- **Procedural Generation:** WorldMap now generates enemies/chests procedurally with difficulty scaling (easier at low depth, harder at high depth) instead of hardcoded placement.
+- **Seeded Randomness:** Reproducible world generation via seeded Random(12345).
+
 ### Why This Matters
-- **Memory stability:** No per-frame allocations
-- **Error visibility:** Asset failures are explicit in loading phase, not silent nulls at render time
-- **Performance:** Single batch reuse vs. per-frame object creation
+- **Memory stability:** No per-frame allocations → predictable GC behavior
+- **Error visibility:** Asset failures explicit, not silent nulls
+- **Performance:** Pooled objects + fewer allocations = smoother 60 FPS
+- **Extensibility:** Difficulty scaling sets stage for varied encounters and progression systems
+- **Rebindable controls:** Easy foundation for accessibility and user preferences
 
 ## Strategic Direction: From Polish to Progression
 
@@ -148,6 +196,35 @@ texture = game.manager.get("path.png", Texture.class);
 // In dispose(): DO NOT dispose textures; only dispose batches and renderers
 worldBatch.dispose();
 shapeRenderer.dispose();
+```
+
+## World Map & Procedural Generation
+
+**WorldMap** encapsulates:
+- Tile grid (100×100) with grass/wall tiles
+- Wall heights (for 3D stacking in isometric view)
+- Enemy and chest lists
+- Player spawn point
+- Save/load to `map.txt`
+
+**Difficulty Scaling:** Entities placed procedurally with depth-based difficulty:
+- Depth = tx + ty (isometric front-to-back ordering)
+- Easier encounters at low depth (top-left), harder at high depth (bottom-right)
+- 8 enemies spread across depth bands
+- 4 chests placed at 25%, 50%, 75%, 100% difficulty thresholds
+- Seeded `Random` for reproducible generation
+
+**Save/Load Format:**
+```
+100 100
+[100 tile rows as 0/1 chars]
+HEIGHTS
+[sparse height entries: x,y,height]
+SPAWN x y
+ENEMY x y
+ENEMY x y
+...
+CHEST x y card1,card2,card3
 ```
 
 ## Screen Lifecycle
