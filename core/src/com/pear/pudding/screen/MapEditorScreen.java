@@ -27,6 +27,7 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final SpriteBatch hudBatch;
+    private SpriteBatch worldBatch;
     private final ShapeRenderer shapeRenderer;
     private BitmapFont font;
     private OrthographicCamera hudCam;
@@ -100,6 +101,7 @@ public class MapEditorScreen implements Screen, InputProcessor {
         camera.update();
 
         hudBatch = new SpriteBatch();
+        worldBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
 
         hudCam = new OrthographicCamera();
@@ -142,38 +144,33 @@ public class MapEditorScreen implements Screen, InputProcessor {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
-        ensureTexturesLoaded();
+        loadTextures();
     }
 
-    private void ensureTexturesLoaded() {
+    private void loadTextures() {
         if (grassTextures == null) {
-            try {
-                game.manager.finishLoading();
-                grassTextures = new Texture[16];
-                for (int i = 0; i < 16; i++) {
-                    grassTextures[i] = new Texture("grass" + i + ".png");
-                    grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                }
-                wallTextures = new Texture[8];
-                for (int i = 0; i < 8; i++) {
-                    wallTextures[i] = new Texture("wall" + i + ".png");
-                    wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                }
-                brickWallTop = new Texture("wallbrick_top.png");
-                brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                brickWallFront = new Texture("wallbrick_front.png");
-                brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                brickWallLeft = new Texture("wallbrick_left.png");
-                brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                brickWallRight = new Texture("wallbrick_right.png");
-                brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                enemyTexture = new Texture("enemy.png");
-                enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                chestTexture = new Texture("chest.png");
-                chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            } catch (Exception e) {
-                e.printStackTrace();
+            grassTextures = new Texture[16];
+            for (int i = 0; i < 16; i++) {
+                grassTextures[i] = game.manager.get("grass" + i + ".png", Texture.class);
+                grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
             }
+            wallTextures = new Texture[8];
+            for (int i = 0; i < 8; i++) {
+                wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
+                wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            }
+            brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
+            brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
+            brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            brickWallLeft = game.manager.get("wallbrick_left.png", Texture.class);
+            brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            brickWallRight = game.manager.get("wallbrick_right.png", Texture.class);
+            brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            enemyTexture = game.manager.get("enemy.png", Texture.class);
+            enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            chestTexture = game.manager.get("chest.png", Texture.class);
+            chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
         }
     }
 
@@ -242,12 +239,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
         Gdx.gl.glClearColor(0.12f, 0.18f, 0.12f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        ensureTexturesLoaded();
-
         // --- Iso tile rendering: back-to-front ---
-        SpriteBatch spriteBatch = new SpriteBatch();
-        spriteBatch.setProjectionMatrix(camera.combined);
-        spriteBatch.begin();
+        worldBatch.setProjectionMatrix(camera.combined);
+        worldBatch.begin();
 
         int maxDepth = WorldMap.MAP_WIDTH + WorldMap.MAP_HEIGHT - 2;
         for (int depth = maxDepth; depth >= 0; depth--) {
@@ -270,42 +264,53 @@ public class MapEditorScreen implements Screen, InputProcessor {
                 int hash  = ((tx * 73856093) ^ (ty * 19349663)) & 0x7FFFFFFF;
 
                 if (tile == 0 && grassTextures != null) {
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
                 } else if (tile != 0 && brickWallTop != null) {
                     // Render stacked brick walls by height
                     byte wallHeight = worldMap.getHeight(tx, ty);
+
+                    // Check adjacent walls to determine which faces are exposed
+                    byte leftWallHeight = worldMap.getHeight(tx - 1, ty);
+                    byte rightWallHeight = worldMap.getHeight(tx + 1, ty);
+                    byte topWallHeight = worldMap.getHeight(tx, ty + 1);
 
                     // Draw each level of the wall
                     for (int level = 0; level < wallHeight; level++) {
                         float levelOffsetY = level * WALL_FACE_H;
 
-                        // Left side face
-                        float leftX = sx;
-                        float leftY = sy + ISO_HALF_H + levelOffsetY;
-                        spriteBatch.setColor(0.7f, 0.7f, 0.7f, 1);
-                        spriteBatch.draw(brickWallLeft, leftX, leftY, ISO_HALF_W, WALL_FACE_H);
+                        // Left side face - only if no adjacent wall at same height
+                        if (leftWallHeight < wallHeight) {
+                            float leftX = sx;
+                            float leftY = sy + ISO_HALF_H + levelOffsetY;
+                            worldBatch.setColor(0.7f, 0.7f, 0.7f, 1);
+                            worldBatch.draw(brickWallLeft, leftX, leftY, ISO_HALF_W, WALL_FACE_H);
+                        }
 
-                        // Right side face
-                        float rightX = sx + ISO_HALF_W;
-                        float rightY = sy + ISO_HALF_H + levelOffsetY;
-                        spriteBatch.setColor(0.65f, 0.65f, 0.65f, 1);
-                        spriteBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
+                        // Right side face - only if no adjacent wall at same height
+                        if (rightWallHeight < wallHeight) {
+                            float rightX = sx + ISO_HALF_W;
+                            float rightY = sy + ISO_HALF_H + levelOffsetY;
+                            worldBatch.setColor(0.65f, 0.65f, 0.65f, 1);
+                            worldBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
+                        }
 
-                        // Front face
-                        spriteBatch.setColor(0.75f, 0.75f, 0.75f, 1);
-                        spriteBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
+                        // Front face - only if no adjacent wall at same height
+                        if (topWallHeight < wallHeight) {
+                            worldBatch.setColor(0.75f, 0.75f, 0.75f, 1);
+                            worldBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
+                        }
                     }
 
                     // Top face (drawn last, positioned at final height)
                     float topFaceY = sy + (wallHeight * WALL_FACE_H);
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(brickWallTop, sx, topFaceY, ISO_TW, ISO_TH);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(brickWallTop, sx, topFaceY, ISO_TW, ISO_TH);
                 }
             }
         }
 
-        spriteBatch.end();
+        worldBatch.end();
 
         // --- Entities + hover highlight (ShapeRenderer, world camera) ---
         Gdx.gl.glEnable(GL20.GL_BLEND);
@@ -350,17 +355,15 @@ public class MapEditorScreen implements Screen, InputProcessor {
         // Enemies (using sprite, with debug fallback)
         if (worldMap.getEnemies().size() > 0) {
             if (enemyTexture != null) {
-                SpriteBatch entityBatch = new SpriteBatch();
-                entityBatch.setProjectionMatrix(camera.combined);
-                entityBatch.begin();
+                worldBatch.setProjectionMatrix(camera.combined);
+                worldBatch.begin();
                 for (EnemyNPC enemy : worldMap.getEnemies()) {
                     float ix = toIsoX(enemy.x, enemy.y);
                     float iy = toIsoY(enemy.x, enemy.y);
-                    entityBatch.setColor(1, 1, 1, 1);
-                    entityBatch.draw(enemyTexture, ix - 16, iy - 24, 32, 48);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(enemyTexture, ix - 16, iy - 24, 32, 48);
                 }
-                entityBatch.end();
-                entityBatch.dispose();
+                worldBatch.end();
             } else {
                 // Debug fallback: draw red circles if texture missing
                 shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -377,17 +380,15 @@ public class MapEditorScreen implements Screen, InputProcessor {
         // Chests (using sprite, with debug fallback)
         if (worldMap.getChests().size() > 0) {
             if (chestTexture != null) {
-                SpriteBatch entityBatch = new SpriteBatch();
-                entityBatch.setProjectionMatrix(camera.combined);
-                entityBatch.begin();
+                worldBatch.setProjectionMatrix(camera.combined);
+                worldBatch.begin();
                 for (Chest chest : worldMap.getChests()) {
                     float ix = toIsoX(chest.x, chest.y);
                     float iy = toIsoY(chest.x, chest.y);
-                    entityBatch.setColor(1, 1, 1, 1);
-                    entityBatch.draw(chestTexture, ix - 24, iy - 20, 48, 40);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(chestTexture, ix - 24, iy - 20, 48, 40);
                 }
-                entityBatch.end();
-                entityBatch.dispose();
+                worldBatch.end();
             } else {
                 // Debug fallback: draw yellow rectangles if texture missing
                 shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -402,8 +403,6 @@ public class MapEditorScreen implements Screen, InputProcessor {
         }
 
         Gdx.gl.glDisable(GL20.GL_BLEND);
-
-        spriteBatch.dispose();
 
         // --- Toolbar HUD ---
         hudCam.setToOrtho(false, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -675,15 +674,7 @@ public class MapEditorScreen implements Screen, InputProcessor {
     public void dispose() {
         shapeRenderer.dispose();
         hudBatch.dispose();
-        if (grassTextures != null)
-            for (Texture t : grassTextures) if (t != null) t.dispose();
-        if (wallTextures != null)
-            for (Texture t : wallTextures) if (t != null) t.dispose();
-        if (brickWallTop != null) brickWallTop.dispose();
-        if (brickWallFront != null) brickWallFront.dispose();
-        if (brickWallLeft != null) brickWallLeft.dispose();
-        if (brickWallRight != null) brickWallRight.dispose();
-        if (enemyTexture != null) enemyTexture.dispose();
-        if (chestTexture != null) chestTexture.dispose();
+        worldBatch.dispose();
+        // Textures are managed by AssetManager, not disposed here
     }
 }

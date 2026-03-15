@@ -29,8 +29,32 @@ public class AssetLoadingScreen implements Screen {
         manager.setLoader(com.badlogic.gdx.graphics.g2d.BitmapFont.class,
             new FreetypeFontLoader(new com.badlogic.gdx.assets.loaders.resolvers.InternalFileHandleResolver()));
 
-        // Queue assets for loading
+        // UI
         manager.load("uiskin.json", Skin.class);
+
+        // World textures: grass variants
+        for (int i = 0; i < 16; i++) {
+            manager.load("grass" + i + ".png", com.badlogic.gdx.graphics.Texture.class);
+        }
+
+        // World textures: wall variants
+        for (int i = 0; i < 8; i++) {
+            manager.load("wall" + i + ".png", com.badlogic.gdx.graphics.Texture.class);
+        }
+
+        // Isometric brick wall textures
+        manager.load("wallbrick_top.png", com.badlogic.gdx.graphics.Texture.class);
+        manager.load("wallbrick_front.png", com.badlogic.gdx.graphics.Texture.class);
+        manager.load("wallbrick_left.png", com.badlogic.gdx.graphics.Texture.class);
+        manager.load("wallbrick_right.png", com.badlogic.gdx.graphics.Texture.class);
+
+        // Entity sprites
+        manager.load("player.png", com.badlogic.gdx.graphics.Texture.class);
+        manager.load("enemy.png", com.badlogic.gdx.graphics.Texture.class);
+        manager.load("chest.png", com.badlogic.gdx.graphics.Texture.class);
+
+        // Audio
+        manager.load("freesound_community-running-in-grass-6237.mp3", com.badlogic.gdx.audio.Sound.class);
     }
 
     @Override

@@ -30,6 +30,7 @@ public class WorldScreen implements Screen, InputProcessor {
     private final OrthographicCamera camera;
     private final Viewport viewport;
     private final SpriteBatch hudBatch;
+    private SpriteBatch worldBatch;
     private final ShapeRenderer shapeRenderer;
     private BitmapFont font;
     private Texture[] grassTextures;
@@ -41,6 +42,7 @@ public class WorldScreen implements Screen, InputProcessor {
     private Texture playerTexture;
     private Texture enemyTexture;
     private Texture chestTexture;
+    private Sound footstepSound;
 
     private float playerX = 50 * WorldMap.TILE_SIZE;
     private float playerY = 15 * WorldMap.TILE_SIZE;
@@ -71,7 +73,6 @@ public class WorldScreen implements Screen, InputProcessor {
     private float groundZ = 0f;
     private boolean isJumping = false;
 
-    private Sound footstepSound;
     private float footstepTimer = 0f;
 
     public WorldScreen(MyGame game) {
@@ -93,6 +94,7 @@ public class WorldScreen implements Screen, InputProcessor {
         camera.update();
 
         hudBatch = new SpriteBatch();
+        worldBatch = new SpriteBatch();
         shapeRenderer = new ShapeRenderer();
         font = null;
     }
@@ -110,43 +112,36 @@ public class WorldScreen implements Screen, InputProcessor {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
-        ensureTexturesLoaded();
+        loadTextures();
     }
 
-    private void ensureTexturesLoaded() {
+    private void loadTextures() {
         if (grassTextures == null) {
-            try {
-                game.manager.finishLoading();
-                grassTextures = new Texture[16];
-                for (int i = 0; i < 16; i++) {
-                    grassTextures[i] = new Texture("grass" + i + ".png");
-                    grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                }
-                wallTextures = new Texture[8];
-                for (int i = 0; i < 8; i++) {
-                    wallTextures[i] = new Texture("wall" + i + ".png");
-                    wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                }
-                brickWallTop = new Texture("wallbrick_top.png");
-                brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                brickWallFront = new Texture("wallbrick_front.png");
-                brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                brickWallLeft = new Texture("wallbrick_left.png");
-                brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                brickWallRight = new Texture("wallbrick_right.png");
-                brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                playerTexture = new Texture("player.png");
-                playerTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                enemyTexture = new Texture("enemy.png");
-                enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                chestTexture = new Texture("chest.png");
-                chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-                if (footstepSound == null) {
-                    footstepSound = Gdx.audio.newSound(Gdx.files.internal("freesound_community-running-in-grass-6237.mp3"));
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+            grassTextures = new Texture[16];
+            for (int i = 0; i < 16; i++) {
+                grassTextures[i] = game.manager.get("grass" + i + ".png", Texture.class);
+                grassTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
             }
+            wallTextures = new Texture[8];
+            for (int i = 0; i < 8; i++) {
+                wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
+                wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            }
+            brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
+            brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
+            brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            brickWallLeft = game.manager.get("wallbrick_left.png", Texture.class);
+            brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            brickWallRight = game.manager.get("wallbrick_right.png", Texture.class);
+            brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            playerTexture = game.manager.get("player.png", Texture.class);
+            playerTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            enemyTexture = game.manager.get("enemy.png", Texture.class);
+            enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            chestTexture = game.manager.get("chest.png", Texture.class);
+            chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+            footstepSound = game.manager.get("freesound_community-running-in-grass-6237.mp3", Sound.class);
         }
     }
 
@@ -293,9 +288,9 @@ public class WorldScreen implements Screen, InputProcessor {
             // Only collide if:
             // 1. Wall is too tall to climb AND
             // 2. Wall is in front of player visually AND
-            // 3. Player is not standing on top of the wall
+            // 3. Player is below the top surface of the wall (not standing on it)
             if (wallHeight > CLIMBABLE_HEIGHT && testDepth >= playerDepth && groundZ < wallTopHeight) {
-                return;
+                return;  // Collision - wall blocks movement
             }
         }
 
@@ -306,7 +301,7 @@ public class WorldScreen implements Screen, InputProcessor {
         byte centerWallHeight = worldMap.getWallHeight(newPlayerX, newPlayerY);
         float centerWallTopHeight = centerWallHeight * WALL_FACE_H;
         if (centerWallHeight > CLIMBABLE_HEIGHT && centerDepth >= playerDepth && groundZ < centerWallTopHeight) {
-            return;
+            return;  // Collision - wall blocks movement
         }
 
         // Update player ground height based on new position
@@ -320,12 +315,9 @@ public class WorldScreen implements Screen, InputProcessor {
         Gdx.gl.glClearColor(0.12f, 0.18f, 0.12f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        ensureTexturesLoaded();
-
         // --- Tile rendering: back-to-front diagonal order ---
-        SpriteBatch spriteBatch = new SpriteBatch();
-        spriteBatch.setProjectionMatrix(camera.combined);
-        spriteBatch.begin();
+        worldBatch.setProjectionMatrix(camera.combined);
+        worldBatch.begin();
 
         int maxDepth = WorldMap.MAP_WIDTH + WorldMap.MAP_HEIGHT - 2;
         for (int depth = maxDepth; depth >= 0; depth--) {
@@ -348,42 +340,53 @@ public class WorldScreen implements Screen, InputProcessor {
                 int hash  = ((tx * 73856093) ^ (ty * 19349663)) & 0x7FFFFFFF;
 
                 if (tile == 0 && grassTextures != null) {
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
                 } else if (tile != 0 && brickWallTop != null) {
                     // Isometric brick wall - stack by height
                     byte wallHeight = worldMap.getHeight(tx, ty);
+
+                    // Check adjacent walls to determine which faces are exposed
+                    byte leftWallHeight = worldMap.getHeight(tx - 1, ty);
+                    byte rightWallHeight = worldMap.getHeight(tx + 1, ty);
+                    byte topWallHeight = worldMap.getHeight(tx, ty + 1);
 
                     // Draw each level of the wall
                     for (int level = 0; level < wallHeight; level++) {
                         float levelOffsetY = level * WALL_FACE_H;
 
-                        // Left side face - extends from left vertex downward
-                        float leftX = sx;
-                        float leftY = sy + ISO_HALF_H + levelOffsetY;
-                        spriteBatch.setColor(0.7f, 0.7f, 0.7f, 1);
-                        spriteBatch.draw(brickWallLeft, leftX, leftY, ISO_HALF_W, WALL_FACE_H);
+                        // Left side face - only if no adjacent wall at same height
+                        if (leftWallHeight < wallHeight) {
+                            float leftX = sx;
+                            float leftY = sy + ISO_HALF_H + levelOffsetY;
+                            worldBatch.setColor(0.7f, 0.7f, 0.7f, 1);
+                            worldBatch.draw(brickWallLeft, leftX, leftY, ISO_HALF_W, WALL_FACE_H);
+                        }
 
-                        // Right side face - extends from right vertex downward
-                        float rightX = sx + ISO_HALF_W;
-                        float rightY = sy + ISO_HALF_H + levelOffsetY;
-                        spriteBatch.setColor(0.65f, 0.65f, 0.65f, 1);
-                        spriteBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
+                        // Right side face - only if no adjacent wall at same height
+                        if (rightWallHeight < wallHeight) {
+                            float rightX = sx + ISO_HALF_W;
+                            float rightY = sy + ISO_HALF_H + levelOffsetY;
+                            worldBatch.setColor(0.65f, 0.65f, 0.65f, 1);
+                            worldBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
+                        }
 
-                        // Front face - below the diamond (or below previous level)
-                        spriteBatch.setColor(0.75f, 0.75f, 0.75f, 1);
-                        spriteBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
+                        // Front face - only if no adjacent wall at same height
+                        if (topWallHeight < wallHeight) {
+                            worldBatch.setColor(0.75f, 0.75f, 0.75f, 1);
+                            worldBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
+                        }
                     }
 
                     // Top face (drawn last so it's on top, positioned at final height)
                     float topFaceY = sy + (wallHeight * WALL_FACE_H);
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(brickWallTop, sx, topFaceY, ISO_TW, ISO_TH);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(brickWallTop, sx, topFaceY, ISO_TW, ISO_TH);
                 }
             }
         }
 
-        spriteBatch.end();
+        worldBatch.end();
 
         // --- Entity rendering: Y-sorted so closer entities overdraw farther ones ---
         EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
@@ -400,9 +403,9 @@ public class WorldScreen implements Screen, InputProcessor {
         // Sort descending by isoY: furthest (highest isoY) drawn first
         entities.sort((a, b) -> Float.compare(toIsoY(b[0], b[1]), toIsoY(a[0], a[1])));
 
-        // Draw sprites with SpriteBatch (reuse existing batch)
-        spriteBatch.setProjectionMatrix(camera.combined);
-        spriteBatch.begin();
+        // Draw sprites with worldBatch
+        worldBatch.setProjectionMatrix(camera.combined);
+        worldBatch.begin();
 
         for (float[] ent : entities) {
             float isoX = toIsoX(ent[0], ent[1]);
@@ -413,25 +416,25 @@ public class WorldScreen implements Screen, InputProcessor {
                 // Player sprite (32×48)
                 float visualOffsetY = playerZ * 0.5f;
                 if (playerTexture != null) {
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(playerTexture, isoX - 16, isoY - 24 + visualOffsetY, 32, 48);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(playerTexture, isoX - 16, isoY - 24 + visualOffsetY, 32, 48);
                 }
             } else if (entityType == 1) {
                 // Enemy sprite (32×48)
                 if (enemyTexture != null) {
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(enemyTexture, isoX - 16, isoY - 24, 32, 48);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(enemyTexture, isoX - 16, isoY - 24, 32, 48);
                 }
             } else if (entityType == 2) {
                 // Chest sprite (48×40)
                 if (chestTexture != null) {
-                    spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(chestTexture, isoX - 24, isoY - 20, 48, 40);
+                    worldBatch.setColor(1, 1, 1, 1);
+                    worldBatch.draw(chestTexture, isoX - 24, isoY - 20, 48, 40);
                 }
             }
         }
 
-        spriteBatch.end();
+        worldBatch.end();
 
         // Draw shadows and interaction prompts with ShapeRenderer
         shapeRenderer.setProjectionMatrix(camera.combined);
@@ -478,8 +481,6 @@ public class WorldScreen implements Screen, InputProcessor {
         }
 
         shapeRenderer.end();
-
-        spriteBatch.dispose();
 
         // --- HUD (screen-space) ---
         ensureFontLoaded();
@@ -647,25 +648,7 @@ public class WorldScreen implements Screen, InputProcessor {
     public void dispose() {
         shapeRenderer.dispose();
         hudBatch.dispose();
-        if (grassTextures != null) {
-            for (Texture texture : grassTextures) {
-                if (texture != null) texture.dispose();
-            }
-        }
-        if (wallTextures != null) {
-            for (Texture texture : wallTextures) {
-                if (texture != null) texture.dispose();
-            }
-        }
-        if (brickWallTop != null) brickWallTop.dispose();
-        if (brickWallFront != null) brickWallFront.dispose();
-        if (brickWallLeft != null) brickWallLeft.dispose();
-        if (brickWallRight != null) brickWallRight.dispose();
-        if (playerTexture != null) playerTexture.dispose();
-        if (enemyTexture != null) enemyTexture.dispose();
-        if (chestTexture != null) chestTexture.dispose();
-        if (footstepSound != null) {
-            footstepSound.dispose();
-        }
+        worldBatch.dispose();
+        // Textures and sounds are managed by AssetManager, not disposed here
     }
 }
