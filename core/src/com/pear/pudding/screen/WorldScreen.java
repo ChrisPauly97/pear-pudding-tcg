@@ -90,7 +90,8 @@ public class WorldScreen implements Screen, InputProcessor {
 
     // Constants
     private static final float TRAIL_FADE_RATE = 0.22f;  // fades in ~4.5 seconds
-    private static final float TRAIL_MAX_DARKEN = 0.35f; // darkens to ~65% brightness at peak
+    private static final float TRAIL_MAX_DARKEN = 0.15f; // darkens to ~85% brightness at peak (subtle)
+    private static final float TRAIL_INITIAL_INTENSITY = 0.6f; // reduced from 1.0
 
     public WorldScreen(MyGame game) {
         this.game = game;
@@ -134,16 +135,13 @@ public class WorldScreen implements Screen, InputProcessor {
 
     private float getTrailDarkening(int tx, int ty) {
         float d = trailTiles.getOrDefault(packTile(tx, ty), 0f);
-        // Cardinal neighbors (half weight)
-        d += trailTiles.getOrDefault(packTile(tx+1, ty), 0f) * 0.5f;
-        d += trailTiles.getOrDefault(packTile(tx-1, ty), 0f) * 0.5f;
-        d += trailTiles.getOrDefault(packTile(tx, ty+1), 0f) * 0.5f;
-        d += trailTiles.getOrDefault(packTile(tx, ty-1), 0f) * 0.5f;
-        // Diagonal neighbors (quarter weight)
-        d += trailTiles.getOrDefault(packTile(tx+1, ty+1), 0f) * 0.25f;
-        d += trailTiles.getOrDefault(packTile(tx-1, ty+1), 0f) * 0.25f;
-        d += trailTiles.getOrDefault(packTile(tx+1, ty-1), 0f) * 0.25f;
-        d += trailTiles.getOrDefault(packTile(tx-1, ty-1), 0f) * 0.25f;
+        // Minimal blending: only slight softness at edges
+        // Cardinal neighbors (tenth weight - very subtle)
+        d += trailTiles.getOrDefault(packTile(tx+1, ty), 0f) * 0.1f;
+        d += trailTiles.getOrDefault(packTile(tx-1, ty), 0f) * 0.1f;
+        d += trailTiles.getOrDefault(packTile(tx, ty+1), 0f) * 0.1f;
+        d += trailTiles.getOrDefault(packTile(tx, ty-1), 0f) * 0.1f;
+        // Diagonal neighbors not included - trail stays tight
         return Math.min(d, 1f);
     }
 
@@ -260,7 +258,7 @@ public class WorldScreen implements Screen, InputProcessor {
         int curTileY = (int)(playerY / WorldMap.TILE_SIZE) + 1;
         long curKey = packTile(curTileX, curTileY);
         if (curKey != lastPlayerTile) {
-            trailTiles.put(curKey, 1.0f);
+            trailTiles.put(curKey, TRAIL_INITIAL_INTENSITY);
             lastPlayerTile = curKey;
         }
 
