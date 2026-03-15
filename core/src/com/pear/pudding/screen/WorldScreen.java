@@ -253,12 +253,15 @@ public class WorldScreen implements Screen, InputProcessor {
             footstepTimer = 0;
         }
 
-        // Trail: add new tile
+        // Trail: mark tile we just LEFT (not current tile)
         int curTileX = (int)(playerX / WorldMap.TILE_SIZE);
         int curTileY = (int)(playerY / WorldMap.TILE_SIZE) + 1;
         long curKey = packTile(curTileX, curTileY);
         if (curKey != lastPlayerTile) {
-            trailTiles.put(curKey, TRAIL_INITIAL_INTENSITY);
+            // Add the tile we just LEFT to the trail
+            if (lastPlayerTile != -1L) {
+                trailTiles.put(lastPlayerTile, TRAIL_INITIAL_INTENSITY);
+            }
             lastPlayerTile = curKey;
         }
 
