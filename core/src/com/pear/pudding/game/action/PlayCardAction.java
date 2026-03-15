@@ -48,17 +48,26 @@ public class PlayCardAction implements GameAction {
             return ActionResult.failure("Board is full");
         }
 
+        // Find an empty slot if not specified
+        int slotToUse = targetBoardSlot;
+        if (slotToUse < 0) {
+            slotToUse = player.getBoard().firstEmptySlot();
+            if (slotToUse < 0) {
+                return ActionResult.failure("No empty board slot");
+            }
+        }
+
         // Perform the move
         player.getHand().removeCard(cardInstanceId);
         player.spendMana(cost);
 
         card.setCurrentZone(ZoneType.BOARD);
-        card.setSlotIndex(targetBoardSlot);
+        card.setSlotIndex(slotToUse);
         card.setSummoningSick(true);
-        player.getBoard().addCard(cardInstanceId, targetBoardSlot);
+        player.getBoard().addCard(cardInstanceId, slotToUse);
 
         return ActionResult.success(
-            new CardPlayedEvent(playerId, cardInstanceId, targetBoardSlot)
+            new CardPlayedEvent(playerId, cardInstanceId, slotToUse)
         );
     }
 

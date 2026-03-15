@@ -10,7 +10,8 @@
       "Bash(gradle desktop:compileJava:*)",
       "Bash(gradle desktop:build:*)",
       "Bash(timeout 10 gradle desktop:run:*)",
-      "Bash(gradle desktop:dist:*)"
+      "Bash(gradle desktop:dist:*)",
+      "Bash(git:*)"
     ]
   }
 }

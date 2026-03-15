@@ -329,18 +329,19 @@ public class PearPudding implements Screen, InputProcessor {
      * Attempts to pick a card from player1's hand at screen coordinates.
      */
     private CardInstance pickCardFromHand(float x, float y) {
-        // Hand is at y ~20-180 (bottom of screen with y-up coords), x ~50+
-        if (y < 0 || y > 180 || x < 0 || x > 1800) return null;
+        // Player hand is at y 0-140 (bottom of screen with y-up coords), centered x
+        if (y < 0 || y > 140) return null;
 
         ZoneState hand = gameState.player1.getHand();
         float cardWidth = 120f;
         float spacing = 20f;
-        float startX = 50f;
+        float handCenterX = 900f;  // Center of 1800px screen
+        float handStartX = handCenterX - 350f;  // Center 5 cards
 
         for (int i = 0; i < hand.capacity; i++) {
             String instanceId = hand.getCardAt(i);
             if (instanceId != null) {
-                float cardX = startX + i * (cardWidth + spacing);
+                float cardX = handStartX + 90f + i * (cardWidth + spacing);
                 if (x >= cardX && x < cardX + cardWidth) {
                     return gameState.cardRepository.find(instanceId);
                 }
@@ -361,8 +362,8 @@ public class PearPudding implements Screen, InputProcessor {
         // Only allow playing cards if it's player1's turn
         if (!activePlayer.equals("player1")) return;
 
-        // Check if dropped on board (y ~200-360 with y-up coords)
-        if (y >= 200 && y <= 360) {
+        // Check if dropped on player board (y ~200-350, centered x)
+        if (y >= 200 && y <= 350) {
             // Try to play card to board
             GameAction action = new PlayCardAction("player1", card.getInstanceId(), -1);
             ActionResult result = action.execute(gameState);

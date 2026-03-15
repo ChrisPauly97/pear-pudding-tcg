@@ -32,6 +32,20 @@ public class EndTurnAction implements GameAction {
         state.turn.nextPlayer(nextPlayer.getPlayerId());
         state.phase = GamePhase.DRAW;
 
+        // Increment mana and refill
+        if (nextPlayer.getTotalMana() < 10) {
+            nextPlayer.setTotalMana(nextPlayer.getTotalMana() + 1);
+        }
+        nextPlayer.refillMana();
+
+        // Draw a card for the new turn
+        com.pear.pudding.game.action.DrawCardAction drawAction =
+            new com.pear.pudding.game.action.DrawCardAction(nextPlayer.getPlayerId());
+        com.pear.pudding.game.action.ActionResult drawResult = drawAction.execute(state);
+        if (drawResult.success) {
+            events.addAll(drawResult.events);
+        }
+
         // Reset next player's minions
         for (String cardId : nextPlayer.getBoard().getSlots()) {
             if (cardId != null) {
@@ -41,12 +55,6 @@ public class EndTurnAction implements GameAction {
                 }
             }
         }
-
-        // Increment mana and refill
-        if (nextPlayer.getTotalMana() < 10) {
-            nextPlayer.setTotalMana(nextPlayer.getTotalMana() + 1);
-        }
-        nextPlayer.refillMana();
 
         events.add(new TurnStartedEvent(nextPlayer.getPlayerId(), state.turn.getTurnNumber()));
 

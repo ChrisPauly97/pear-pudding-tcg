@@ -12,15 +12,15 @@ public final class RenderConstants {
     public static final float CARD_WIDTH = 100f;
     public static final float CARD_HEIGHT = 140f;
 
-    // Board layout
-    public static final float BOARD_CENTER_X = 400f;
-    public static final float BOARD_Y = 250f;
-    public static final float BOARD_SLOT_SPACING = 120f;
+    // Board layout (centered on 1800x1000 screen)
+    public static final float BOARD_CENTER_X = 600f;  // Center of board area
+    public static final float BOARD_Y = 400f;         // Middle of screen
+    public static final float BOARD_SLOT_SPACING = 130f;
 
-    // Hand layout
+    // Hand layout (centered)
     public static final float HAND_Y = 50f;
-    public static final float HAND_START_X = 100f;
-    public static final float HAND_SLOT_SPACING = 120f;
+    public static final float HAND_START_X = 200f;   // More centered
+    public static final float HAND_SLOT_SPACING = 130f;
 
     // Discard and draw deck positions
     public static final float DISCARD_X = 600f;

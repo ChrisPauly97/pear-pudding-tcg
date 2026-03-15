@@ -49,6 +49,13 @@ public class GameRenderer implements GameEventListener {
 
     /**
      * Renders the entire game state.
+     * Layout from top to bottom (centered):
+     * 1. Enemy hand
+     * 2. Enemy hero
+     * 3. Enemy board
+     * 4. Player board
+     * 5. Player hero
+     * 6. Player hand
      */
     public void render(Batch batch) {
         // Ensure font is loaded
@@ -62,16 +69,13 @@ public class GameRenderer implements GameEventListener {
 
         batch.setColor(Color.WHITE);
 
-        // Draw board zones for both players
-        renderBoard(batch);
-
-        // Draw hands
-        renderHand(batch, gameState.player1, true);
-        renderHand(batch, gameState.player2, false);
-
-        // Draw heroes
-        renderHero(batch, gameState.player1, true);
-        renderHero(batch, gameState.player2, false);
+        // Top to bottom layout:
+        renderHand(batch, gameState.player2, false);      // Enemy hand (top)
+        renderHero(batch, gameState.player2, false);      // Enemy hero
+        renderEnemyBoard(batch);                          // Enemy board
+        renderPlayerBoard(batch);                         // Player board
+        renderHero(batch, gameState.player1, true);       // Player hero
+        renderHand(batch, gameState.player1, true);       // Player hand (bottom)
 
         // Draw turn info
         renderTurnInfo(batch);
@@ -87,14 +91,45 @@ public class GameRenderer implements GameEventListener {
     }
 
     /**
-     * Renders the board (both players' minions).
+     * Renders enemy board (centered, below enemy hero).
      */
-    private void renderBoard(Batch batch) {
-        // Player 1 board (bottom, y-up coords)
-        renderZoneCards(batch, gameState.player1.getBoard(), 400, 200, true);
+    private void renderEnemyBoard(Batch batch) {
+        float boardWidth = 700f;
+        float boardHeight = 150f;
+        float centerX = 900f;  // Center of 1800px screen
+        float boardX = centerX - boardWidth / 2;
+        float boardY = 350f;  // Below enemy hero
 
-        // Player 2 board (top, y-up coords)
-        renderZoneCards(batch, gameState.player2.getBoard(), 400, 700, false);
+        // Draw zone boundary
+        batch.setColor(new Color(0.3f, 0.2f, 0.2f, 0.5f));
+        batch.draw(RenderConstants.getPixelTexture(), boardX, boardY, boardWidth, boardHeight);
+        batch.setColor(Color.WHITE);
+        batch.draw(RenderConstants.getPixelTexture(), boardX, boardY, boardWidth, 2f);  // Top line
+
+        // Render cards
+        float cardsStartX = boardX + 90f;
+        renderZoneCards(batch, gameState.player2.getBoard(), cardsStartX, boardY + 15f, false);
+    }
+
+    /**
+     * Renders player board (centered, above player hero).
+     */
+    private void renderPlayerBoard(Batch batch) {
+        float boardWidth = 700f;
+        float boardHeight = 150f;
+        float centerX = 900f;  // Center of 1800px screen
+        float boardX = centerX - boardWidth / 2;
+        float boardY = 200f;  // Above player hero
+
+        // Draw zone boundary
+        batch.setColor(new Color(0.2f, 0.3f, 0.4f, 0.5f));
+        batch.draw(RenderConstants.getPixelTexture(), boardX, boardY, boardWidth, boardHeight);
+        batch.setColor(Color.WHITE);
+        batch.draw(RenderConstants.getPixelTexture(), boardX, boardY, boardWidth, 2f);  // Top line
+
+        // Render cards
+        float cardsStartX = boardX + 90f;
+        renderZoneCards(batch, gameState.player1.getBoard(), cardsStartX, boardY + 15f, true);
     }
 
     /**
@@ -178,10 +213,16 @@ public class GameRenderer implements GameEventListener {
     private void ensureFontLoaded() {
         if (!fontLoaded && assetManager.isLoaded("uiskin.json")) {
             try {
-                font = assetManager.get("uiskin.json", com.badlogic.gdx.scenes.scene2d.ui.Skin.class).getFont("default");
+                com.badlogic.gdx.scenes.scene2d.ui.Skin skin = assetManager.get("uiskin.json", com.badlogic.gdx.scenes.scene2d.ui.Skin.class);
+                // Try default-font first, then fall back to default
+                font = skin.getFont("default-font");
+                if (font == null) {
+                    font = skin.getFont("default");
+                }
                 fontLoaded = (font != null);
             } catch (Exception e) {
                 // Font not available
+                fontLoaded = false;
             }
         }
     }
@@ -200,24 +241,54 @@ public class GameRenderer implements GameEventListener {
     }
 
     /**
-     * Renders a player's hand.
+     * Renders a player's hand with zone boundary.
      */
     private void renderHand(Batch batch, PlayerState player, boolean isPlayer1) {
         ZoneState handZone = player.getHand();
-        float y = isPlayer1 ? 20f : 820f;  // y-up: player1 near bottom, player2 near top
-        float startX = 50f;
+        float handWidth = 700f;
+        float handHeight = 140f;
+        float centerX = 900f;
+        float handX = centerX - handWidth / 2;
 
-        renderZoneCards(batch, handZone, startX, y, true);
+        if (isPlayer1) {
+            // MY hand at bottom
+            float handY = 0f;
+
+            // Draw zone boundary for hand
+            batch.setColor(new Color(0.2f, 0.4f, 0.3f, 0.5f));
+            batch.draw(RenderConstants.getPixelTexture(), handX, handY, handWidth, handHeight);
+            batch.setColor(Color.WHITE);
+            batch.draw(RenderConstants.getPixelTexture(), handX, handY + handHeight, handWidth, 2f);  // Top line
+
+            // Render cards centered in hand zone
+            float cardsStartX = handX + 90f;
+            renderZoneCards(batch, handZone, cardsStartX, handY + 10f, true);
+        } else {
+            // Enemy hand at top - show card count instead of individual cards
+            float handY = 850f;
+
+            // Draw zone boundary
+            batch.setColor(new Color(0.3f, 0.3f, 0.2f, 0.5f));
+            batch.draw(RenderConstants.getPixelTexture(), handX, handY, handWidth, handHeight);
+            batch.setColor(Color.WHITE);
+            batch.draw(RenderConstants.getPixelTexture(), handX, handY, handWidth, 2f);  // Bottom line
+
+            // Show enemy hand count instead of individual cards
+            if (font != null) {
+                batch.setColor(Color.CYAN);
+                font.draw(batch, "Enemy Hand: " + handZone.size() + " cards", handX + 20f, handY + 60f);
+            }
+        }
     }
 
     /**
-     * Renders a player's hero.
+     * Renders a player's hero on the left side.
      */
     private void renderHero(Batch batch, PlayerState player, boolean isPlayer1) {
         float x = 20f;
-        float y = isPlayer1 ? 250f : 750f;  // y-up coords
-        float w = 200f;
-        float h = 120f;
+        float w = 180f;
+        float h = 130f;
+        float y = isPlayer1 ? 70f : 710f;  // Player hero: y=70-200, Enemy hero: y=710-840
 
         HeroState hero = player.getHero();
 
@@ -230,28 +301,86 @@ public class GameRenderer implements GameEventListener {
         batch.draw(RenderConstants.getPixelTexture(), x + 5f, y + 5f, w - 10f, h - 10f);
 
         // Draw hero title and stats
-        ensureFontLoaded();
         if (font != null) {
             batch.setColor(Color.YELLOW);
-            font.draw(batch, isPlayer1 ? "YOUR HERO" : "ENEMY HERO", x + 15f, y + h - 20f);
+            font.draw(batch, isPlayer1 ? "YOUR HERO" : "ENEMY HERO", x + 10f, y + h - 20f);
 
             // Health and Attack
             batch.setColor(Color.RED);
-            font.draw(batch, "HP: " + hero.getHealth(), x + 15f, y + 60f);
+            font.draw(batch, "HP: " + hero.getHealth(), x + 10f, y + 70f);
             batch.setColor(Color.ORANGE);
-            font.draw(batch, "ATK: " + hero.getAttack(), x + 15f, y + 35f);
+            font.draw(batch, "ATK: " + hero.getAttack(), x + 10f, y + 45f);
         }
 
-        // Draw mana pool
-        batch.setColor(new Color(0.2f, 0.3f, 0.6f, 1f));  // Blue
-        batch.draw(RenderConstants.getPixelTexture(), x + w + 20f, y, 120f, 60f);
+        batch.setColor(Color.WHITE);
 
-        if (font != null) {
-            batch.setColor(Color.CYAN);
-            font.draw(batch, "MANA", x + w + 30f, y + 45f);
+        // Mana pool and draw deck positioning
+        if (isPlayer1) {
+            // MY mana and draw deck: bottom right corner
+            float manaX = 1800f - 150f;
+            float manaY = 20f;
+            float manaW = 130f;
+            float manaH = 70f;
+
+            batch.setColor(new Color(0.2f, 0.3f, 0.6f, 1f));  // Blue
+            batch.draw(RenderConstants.getPixelTexture(), manaX, manaY, manaW, manaH);
+
+            if (font != null) {
+                batch.setColor(Color.CYAN);
+                font.draw(batch, "MANA", manaX + 20f, manaY + 50f);
+                batch.setColor(Color.WHITE);
+                font.draw(batch, player.getCurrentMana() + " / " + player.getTotalMana(),
+                    manaX + 25f, manaY + 25f);
+            }
+
+            // Draw deck below mana
+            float deckX = manaX;
+            float deckY = manaY - 80f;
+            float deckW = 130f;
+            float deckH = 60f;
+
+            batch.setColor(new Color(0.3f, 0.3f, 0.3f, 1f));  // Gray
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, deckH);
             batch.setColor(Color.WHITE);
-            font.draw(batch, player.getCurrentMana() + " / " + player.getTotalMana(),
-                x + w + 35f, y + 25f);
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, 2f);  // Top line
+
+            if (font != null) {
+                batch.setColor(Color.WHITE);
+                font.draw(batch, "Deck: " + player.getDrawDeck().size(), deckX + 10f, deckY + 35f);
+            }
+        } else {
+            // Enemy mana and draw deck: top right corner
+            float manaX = 1800f - 150f;
+            float manaY = 900f;
+            float manaW = 130f;
+            float manaH = 70f;
+
+            batch.setColor(new Color(0.2f, 0.3f, 0.6f, 1f));  // Blue
+            batch.draw(RenderConstants.getPixelTexture(), manaX, manaY, manaW, manaH);
+
+            if (font != null) {
+                batch.setColor(Color.CYAN);
+                font.draw(batch, "MANA", manaX + 20f, manaY + 50f);
+                batch.setColor(Color.WHITE);
+                font.draw(batch, player.getCurrentMana() + " / " + player.getTotalMana(),
+                    manaX + 25f, manaY + 25f);
+            }
+
+            // Draw deck above mana
+            float deckX = manaX;
+            float deckY = manaY + 70f;
+            float deckW = 130f;
+            float deckH = 60f;
+
+            batch.setColor(new Color(0.3f, 0.3f, 0.3f, 1f));  // Gray
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, deckH);
+            batch.setColor(Color.WHITE);
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY + deckH, deckW, 2f);  // Top line
+
+            if (font != null) {
+                batch.setColor(Color.WHITE);
+                font.draw(batch, "Deck: " + player.getDrawDeck().size(), deckX + 10f, deckY + 35f);
+            }
         }
 
         batch.setColor(Color.WHITE);
