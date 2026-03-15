@@ -71,6 +71,11 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private java.util.List<String> mapNames = new java.util.ArrayList<>();
     private int mapListHoverIndex = -1;
 
+    // Deferred dialog creation (to avoid input event conflicts)
+    private String pendingMapNameDialog = null;
+    private float pendingDoorX = 0, pendingDoorY = 0;
+    private boolean pendingDoorDialog = false;
+
     private static final float CAMERA_SPEED = 400f;
     private static final float TOOLBAR_HEIGHT = 40;
 
@@ -305,6 +310,12 @@ public class MapEditorScreen implements Screen, InputProcessor {
     }
 
     private void update(float delta) {
+        // Handle deferred dialog creation (avoid input event conflicts)
+        if (pendingDoorDialog) {
+            pendingDoorDialog = false;
+            showDoorNameDialog(pendingDoorX, pendingDoorY);
+        }
+
         // Pan camera directly in iso space
         float dx = 0, dy = 0;
         if (moveRight) dx += CAMERA_SPEED;
@@ -665,7 +676,10 @@ public class MapEditorScreen implements Screen, InputProcessor {
             case DOOR: {
                 float wx = tx * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
                 float wy = ty * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
-                showDoorNameDialog(wx, wy);
+                // Defer dialog creation to next frame to avoid input event conflicts
+                pendingDoorX = wx;
+                pendingDoorY = wy;
+                pendingDoorDialog = true;
                 break;
             }
             case PLAYER_SPAWN:
