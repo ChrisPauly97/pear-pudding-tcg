@@ -106,7 +106,7 @@ public class Card extends Actor {
           switch (statusEffect.getEffectType()){
             case HEAL:
               health += statusEffect.getValue();
-              break;
+              return false;
             case DAMAGE:
               return true;
             case REMOVE:
@@ -185,8 +185,8 @@ public class Card extends Actor {
 
     public void resetToPreviousLocation() {
         Gdx.app.log("Reset", this.getCurrentLocation().toString());
-        var board = getPlayer().getBoard();
-        var hand = getPlayer().getHand();
+        Board board = getPlayer().getBoard();
+        Hand hand = getPlayer().getHand();
         switch (this.getCurrentLocation()) {
             case BOARD:
                 board.restoreSnapshot();

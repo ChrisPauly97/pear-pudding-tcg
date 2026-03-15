@@ -38,8 +38,6 @@ public class GameLoadingScreen extends AbstractScreen {
 
     private float startX, endX;
     private float percent;
-    private Player player1;
-    private Player player2;
 
     private Actor loadingBar;
 
@@ -150,12 +148,9 @@ public class GameLoadingScreen extends AbstractScreen {
         if (game.manager.update()) { // Load some, will return true if done loading
             if(game.manager.isFinished()) { // If the screen is touched after the game is done loading, go to the main menu screen
                 var font = game.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
-                game.manager.get("uiskin.json", Skin.class).add("default-font",font );
-                this.player1 = new Player(true, game.manager, false);  // Human player
-                this.player2 = new Player(false, game.manager, true);  // AI player
-                player1.initializeDeck(stage);
-                player2.initializeDeck(stage);
-                game.setScreen(new PearPudding(game, game.manager, player1, player2));
+                game.manager.get("uiskin.json", Skin.class).add("default-font", font);
+                // Create new PearPudding screen with the new architecture
+                game.setScreen(new PearPudding(game, game.manager));
             }
         }
 

@@ -2,9 +2,10 @@ package com.pear.pudding;
 
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
+import com.pear.pudding.game.data.GameConstants;
 
-import static com.pear.pudding.model.Constants.WINDOW_HEIGHT;
-import static com.pear.pudding.model.Constants.WINDOW_WIDTH;
+import static com.pear.pudding.game.data.GameConstants.WINDOW_HEIGHT;
+import static com.pear.pudding.game.data.GameConstants.WINDOW_WIDTH;
 
 // Please note that on macOS your application needs to be started with the -XstartOnFirstThread JVM argument
 public class DesktopLauncher {

@@ -19,8 +19,9 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pear.pudding.MyGame;
+import com.pear.pudding.game.data.GameConstants;
 
-import static com.pear.pudding.model.Constants.*;
+import static com.pear.pudding.game.data.GameConstants.*;
 
 public class OptionsScreen implements Screen {
     private MyGame game;
@@ -86,13 +87,13 @@ public class OptionsScreen implements Screen {
                 if(!Gdx.graphics.isFullscreen()) {
                     Gdx.graphics.setFullscreenMode(Gdx.graphics.getDisplayMode());
                     fullscreenButton.setText("Windowed");
-                    WINDOW_HEIGHT = Gdx.graphics.getHeight();
-                    WINDOW_WIDTH = Gdx.graphics.getWidth();
+                    //WINDOW_HEIGHT = Gdx.graphics.getHeight();
+                    //WINDOW_WIDTH = Gdx.graphics.getWidth();
                 }else{
                     Gdx.graphics.setWindowedMode((int) WINDOWED_WINDOW_WIDTH, (int) WINDOWED_WINDOW_HEIGHT);
                     fullscreenButton.setText("Fullscreen");
-                    WINDOW_WIDTH = WINDOWED_WINDOW_WIDTH;
-                    WINDOW_HEIGHT = WINDOWED_WINDOW_HEIGHT;
+                    //WINDOW_WIDTH = WINDOWED_WINDOW_WIDTH;
+                    //WINDOW_HEIGHT = WINDOWED_WINDOW_HEIGHT;
                 }
             }
         });

@@ -60,12 +60,23 @@ public class Player extends Actor {
         Card card;
         for (int i = 0; i < drawDeck.getCards().length; i++) {
             Vector3 slotPos = drawDeck.getSlotPositionAtIndex(1);
-            card = switch (i) {
-                case 0, 3 -> new Ghost(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                case 1, 4 -> new Skeleton(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                case 2, 5 -> new Zombie(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-                default -> new Ghoul(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
-            };
+            switch (i) {
+                case 0:
+                case 3:
+                    card = new Ghost(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                    break;
+                case 1:
+                case 4:
+                    card = new Skeleton(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                    break;
+                case 2:
+                case 5:
+                    card = new Zombie(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                    break;
+                default:
+                    card = new Ghoul(slotPos.x, slotPos.y, CARD_WIDTH, CARD_HEIGHT, Color.BLACK, this);
+                    break;
+            }
             card.setCurrentLocation(Location.DRAWDECK);
             this.drawDeck.addCard(card, i);
         }
@@ -92,7 +103,7 @@ public class Player extends Actor {
     }
 
     public void draw(Batch batch) {
-        var font = this.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
+        BitmapFont font = this.manager.get("fonts/Satoshi-Variable.ttf", BitmapFont.class);
 
         font.getData().markupEnabled = true;
         font.getData().setScale(1f);
@@ -114,8 +125,8 @@ public class Player extends Actor {
     public void drawCard() {
         for (int i = this.drawDeck.getCards().length - 1; i >= 0; i--) {
             if (this.drawDeck.getCards()[i] != null) {
-                var card = this.drawDeck.getCards()[i];
-                var emptySlot = this.hand.firstEmptySlot();
+                Card card = this.drawDeck.getCards()[i];
+                int emptySlot = this.hand.firstEmptySlot();
                 if (card != null && emptySlot != -1) {
                     // Use atomic move
                     Deck.moveCardBetweenDecks(card, this.drawDeck, this.hand, emptySlot);

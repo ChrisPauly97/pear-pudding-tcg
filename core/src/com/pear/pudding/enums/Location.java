@@ -1,9 +1,5 @@
 package com.pear.pudding.enums;
 
-import com.badlogic.gdx.Gdx;
-import lombok.Getter;
-
-@Getter
 public enum Location {
     BOARD("Board"),
     HAND("Hand"),
@@ -11,15 +7,19 @@ public enum Location {
     DRAWDECK("DrawDeck"),
     ZOOM("Zoom");
 
-    private String value;
+    private final String value;
 
     Location(String value) {
         this.value = value;
     }
 
+    public String getValue() {
+        return value;
+    }
+
     @Override
     public String toString() {
-        return this.getValue();
+        return getValue();
     }
 
     public static Location getEnum(String value) {

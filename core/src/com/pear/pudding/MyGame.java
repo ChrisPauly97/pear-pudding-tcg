@@ -2,7 +2,7 @@ package com.pear.pudding;
 
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.assets.AssetManager;
-import com.pear.pudding.screen.LoadingScreen;
+import com.pear.pudding.screen.AssetLoadingScreen;
 
 public class MyGame extends Game {
     public AssetManager manager = new AssetManager();
@@ -10,7 +10,7 @@ public class MyGame extends Game {
     @Override
     public void create()
     {
-        setScreen(new LoadingScreen(this));
+        setScreen(new AssetLoadingScreen(this, manager));
     }
 }
 

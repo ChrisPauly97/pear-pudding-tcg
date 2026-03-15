@@ -1,6 +1,21 @@
-sourceCompatibility = 17
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 
 sourceSets.main.java.srcDirs = [ "src/" ]
+sourceSets.main.java.excludes = [
+    "test/**",
+    "com/pear/pudding/model/**",
+    "com/pear/pudding/player/**",
+    "com/pear/pudding/card/**",
+    "com/pear/pudding/input/**",
+    "com/pear/pudding/ai/**",
+    "com/pear/pudding/screen/GameLoadingScreen.java",
+    "com/pear/pudding/screen/LoadingScreen.java",
+    "com/pear/pudding/screen/GameOverScreen.java"
+]
 
 eclipse.project.name = appName + "-core"

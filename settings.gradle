@@ -1,4 +1,4 @@
-include 'desktop', 'html', 'core'
+include 'desktop', 'core'
 
 def androidSdkAvailable = System.getenv('ANDROID_HOME') != null ||
         new File(System.getProperty('user.home') + '/Android/Sdk').exists() ||

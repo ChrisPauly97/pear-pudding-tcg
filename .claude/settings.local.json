@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(./gradlew desktop:build:*)",
-      "Bash(./gradlew desktop:run:*)"
+      "Bash(./gradlew desktop:run:*)",
+      "Bash(./gradlew clean:*)",
+      "Bash(./gradlew:*)",
+      "Bash(gradle core:compileJava:*)",
+      "Bash(grep:*)",
+      "Bash(gradle desktop:compileJava:*)",
+      "Bash(gradle desktop:build:*)",
+      "Bash(timeout 10 gradle desktop:run:*)",
+      "Bash(gradle desktop:dist:*)"
     ]
   }
 }
