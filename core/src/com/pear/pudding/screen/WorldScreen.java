@@ -13,12 +13,16 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.pear.pudding.MyGame;
+import com.pear.pudding.input.InputController;
 import com.pear.pudding.world.Chest;
 import com.pear.pudding.world.EnemyNPC;
 import com.pear.pudding.world.WorldMap;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 import static com.pear.pudding.game.data.GameConstants.WINDOW_HEIGHT;
@@ -47,9 +51,11 @@ public class WorldScreen implements Screen, InputProcessor {
     // Pooled collections for rendering (reused every frame to avoid allocations)
     private final List<float[]> entitiesPool = new ArrayList<>();
 
+    // Input controller (centralized rebindable controls)
+    private final InputController inputController = new InputController();
+
     private float playerX = 50 * WorldMap.TILE_SIZE;
     private float playerY = 15 * WorldMap.TILE_SIZE;
-    private boolean moveUp, moveDown, moveLeft, moveRight;
 
     private static final float PLAYER_SPEED = 180f;
     private static final float PLAYER_RADIUS = 12f;
@@ -77,6 +83,14 @@ public class WorldScreen implements Screen, InputProcessor {
     private boolean isJumping = false;
 
     private float footstepTimer = 0f;
+
+    // Trail system
+    private final HashMap<Long, Float> trailTiles = new HashMap<>();  // packed tile coord → intensity [0,1]
+    private long lastPlayerTile = -1L;
+
+    // Constants
+    private static final float TRAIL_FADE_RATE = 0.22f;  // fades in ~4.5 seconds
+    private static final float TRAIL_MAX_DARKEN = 0.35f; // darkens to ~65% brightness at peak
 
     public WorldScreen(MyGame game) {
         this.game = game;
@@ -169,10 +183,10 @@ public class WorldScreen implements Screen, InputProcessor {
     private void update(float delta) {
         // Iso-remapped controls: W/S = northeast/southwest, A/D = northwest/southeast
         float dx = 0, dy = 0;
-        if (moveUp)    { dx += PLAYER_SPEED; dy += PLAYER_SPEED; }
-        if (moveDown)  { dx -= PLAYER_SPEED; dy -= PLAYER_SPEED; }
-        if (moveLeft)  { dx -= PLAYER_SPEED; dy += PLAYER_SPEED; }
-        if (moveRight) { dx += PLAYER_SPEED; dy -= PLAYER_SPEED; }
+        if (inputController.moveUp)    { dx += PLAYER_SPEED; dy += PLAYER_SPEED; }
+        if (inputController.moveDown)  { dx -= PLAYER_SPEED; dy -= PLAYER_SPEED; }
+        if (inputController.moveLeft)  { dx -= PLAYER_SPEED; dy += PLAYER_SPEED; }
+        if (inputController.moveRight) { dx += PLAYER_SPEED; dy -= PLAYER_SPEED; }
 
         // Normalize diagonal movement
         if (dx != 0 && dy != 0) {
@@ -209,7 +223,7 @@ public class WorldScreen implements Screen, InputProcessor {
         }
 
         // Footstep sound
-        if (!isJumping && (moveUp || moveDown || moveLeft || moveRight) && footstepSound != null) {
+        if (!isJumping && (inputController.moveUp || inputController.moveDown || inputController.moveLeft || inputController.moveRight) && footstepSound != null) {
             footstepTimer -= delta;
             if (footstepTimer <= 0) {
                 footstepSound.play(0.5f);
@@ -525,54 +539,26 @@ public class WorldScreen implements Screen, InputProcessor {
 
     @Override
     public boolean keyDown(int keycode) {
-        switch (keycode) {
-            case Input.Keys.W:
-            case Input.Keys.UP:
-                moveUp = true;
-                return true;
-            case Input.Keys.A:
-            case Input.Keys.LEFT:
-                moveLeft = true;
-                return true;
-            case Input.Keys.S:
-            case Input.Keys.DOWN:
-                moveDown = true;
-                return true;
-            case Input.Keys.D:
-            case Input.Keys.RIGHT:
-                moveRight = true;
-                return true;
-            case Input.Keys.E:
-                handleInteract();
-                return true;
-            case Input.Keys.SPACE:
-                handleJump();
-                return true;
+        // Handle interact and jump immediately
+        if (inputController.isInteractPressed(keycode)) {
+            handleInteract();
+            return true;
         }
-        return false;
+        if (inputController.isJumpPressed(keycode)) {
+            handleJump();
+            return true;
+        }
+
+        // Handle movement via controller
+        inputController.handleKeyDown(keycode);
+        return inputController.isMovementKey(keycode);
     }
 
     @Override
     public boolean keyUp(int keycode) {
-        switch (keycode) {
-            case Input.Keys.W:
-            case Input.Keys.UP:
-                moveUp = false;
-                return true;
-            case Input.Keys.A:
-            case Input.Keys.LEFT:
-                moveLeft = false;
-                return true;
-            case Input.Keys.S:
-            case Input.Keys.DOWN:
-                moveDown = false;
-                return true;
-            case Input.Keys.D:
-            case Input.Keys.RIGHT:
-                moveRight = false;
-                return true;
-        }
-        return false;
+        // Handle movement via controller
+        inputController.handleKeyUp(keycode);
+        return inputController.isMovementKey(keycode);
     }
 
     private void handleInteract() {
@@ -641,11 +627,8 @@ public class WorldScreen implements Screen, InputProcessor {
 
     @Override
     public void hide() {
-        // Reset movement flags when leaving screen to prevent stuck movement
-        moveUp = false;
-        moveDown = false;
-        moveLeft = false;
-        moveRight = false;
+        // Reset input when leaving screen to prevent stuck movement
+        inputController.reset();
     }
 
     @Override
