@@ -34,6 +34,23 @@ public class TextureGenerator {
             System.out.println("Generated: " + outputFile.getAbsolutePath());
         }
 
+        // Generate brick wall textures for 3D effect
+        BufferedImage brickTop = generateBrickWallTop();
+        ImageIO.write(brickTop, "PNG", new File(ASSETS_DIR, "wallbrick_top.png"));
+        System.out.println("Generated: " + new File(ASSETS_DIR, "wallbrick_top.png").getAbsolutePath());
+
+        BufferedImage brickFront = generateBrickWallFront();
+        ImageIO.write(brickFront, "PNG", new File(ASSETS_DIR, "wallbrick_front.png"));
+        System.out.println("Generated: " + new File(ASSETS_DIR, "wallbrick_front.png").getAbsolutePath());
+
+        BufferedImage brickLeft = generateBrickWallSide(true);
+        ImageIO.write(brickLeft, "PNG", new File(ASSETS_DIR, "wallbrick_left.png"));
+        System.out.println("Generated: " + new File(ASSETS_DIR, "wallbrick_left.png").getAbsolutePath());
+
+        BufferedImage brickRight = generateBrickWallSide(false);
+        ImageIO.write(brickRight, "PNG", new File(ASSETS_DIR, "wallbrick_right.png"));
+        System.out.println("Generated: " + new File(ASSETS_DIR, "wallbrick_right.png").getAbsolutePath());
+
         // Generate entity sprites
         BufferedImage playerSprite = generatePlayerSprite();
         ImageIO.write(playerSprite, "PNG", new File(ASSETS_DIR, "player.png"));
@@ -304,6 +321,139 @@ public class TextureGenerator {
         for (int x = 8; x < 40; x++) {
             int rgb = (255 << 24) | (100 << 16) | (100 << 8) | (50);
             img.setRGB(x, 19, rgb); // Line at top-front edge
+        }
+
+        return img;
+    }
+
+    /**
+     * Generate an isometric brick wall top face (64×32).
+     * Shows a diamond-shaped brick pattern.
+     */
+    private static BufferedImage generateBrickWallTop() {
+        BufferedImage img = new BufferedImage(64, 32, BufferedImage.TYPE_INT_ARGB);
+        Random rand = new Random(12345);
+
+        // Brick color palette (terracotta/red)
+        int[] brickColors = {
+            0xFF8B4513, // Saddle brown
+            0xFFA0522D, // Sienna
+            0xFFCD853F, // Peru
+            0xFFD2691E, // Chocolate
+            0xFF8B6914  // Dark gold-brown
+        };
+
+        // Fill the diamond with brick pattern
+        for (int y = 0; y < 32; y++) {
+            for (int x = 0; x < 64; x++) {
+                if (isInsideDiamond(x, y, 32, 0, 0, 16, 32, 32, 64, 16)) {
+                    // Brick grid pattern
+                    int brickRow = (y + 4) / 8;
+                    int brickCol = (x + (brickRow % 2) * 8) / 16;
+                    int brickColor = brickColors[(brickRow * 3 + brickCol) % brickColors.length];
+
+                    // Add mortar (darker lines between bricks)
+                    if (y % 8 < 1 || x % 16 < 1) {
+                        brickColor = 0xFF3D3D3D; // Dark mortar
+                    } else {
+                        // Vary brick color slightly
+                        int var = rand.nextInt(20) - 10;
+                        int r = Math.max(0, Math.min(255, ((brickColor >> 16) & 0xFF) + var));
+                        int g = Math.max(0, Math.min(255, ((brickColor >> 8) & 0xFF) + var));
+                        int b = Math.max(0, Math.min(255, (brickColor & 0xFF) + var));
+                        brickColor = (255 << 24) | (r << 16) | (g << 8) | b;
+                    }
+
+                    img.setRGB(x, y, brickColor | (255 << 24));
+                } else {
+                    img.setRGB(x, y, 0x00000000); // Transparent
+                }
+            }
+        }
+
+        return img;
+    }
+
+    /**
+     * Generate brick wall front face (64×20).
+     * Darker brick pattern for the wall front face.
+     */
+    private static BufferedImage generateBrickWallFront() {
+        BufferedImage img = new BufferedImage(64, 20, BufferedImage.TYPE_INT_ARGB);
+        Random rand = new Random(54321);
+
+        // Darker brick colors for front face (more depth)
+        int[] brickColors = {
+            0xFF704214, // Darker saddle brown
+            0xFF8B4513, // Saddle brown
+            0xFF964B00, // Brown
+            0xFF7B3F00, // Dark brown
+            0xFF6B3410  // Very dark brown
+        };
+
+        for (int y = 0; y < 20; y++) {
+            for (int x = 0; x < 64; x++) {
+                // Brick grid pattern (tighter for smaller height)
+                int brickRow = (y + 2) / 5;
+                int brickCol = (x + (brickRow % 2) * 8) / 16;
+                int brickColor = brickColors[(brickRow * 3 + brickCol) % brickColors.length];
+
+                // Add mortar lines
+                if (y % 5 < 1 || x % 16 < 1) {
+                    brickColor = 0xFF2A2A2A; // Dark mortar
+                } else {
+                    // Vary color
+                    int var = rand.nextInt(15) - 7;
+                    int r = Math.max(0, Math.min(255, ((brickColor >> 16) & 0xFF) + var));
+                    int g = Math.max(0, Math.min(255, ((brickColor >> 8) & 0xFF) + var));
+                    int b = Math.max(0, Math.min(255, (brickColor & 0xFF) + var));
+                    brickColor = (r << 16) | (g << 8) | b;
+                }
+
+                img.setRGB(x, y, brickColor | (255 << 24));
+            }
+        }
+
+        return img;
+    }
+
+    /**
+     * Generate brick wall side face (32×20).
+     * Even darker to show depth. If left=true, shade left; if false, shade right.
+     */
+    private static BufferedImage generateBrickWallSide(boolean isLeft) {
+        BufferedImage img = new BufferedImage(32, 20, BufferedImage.TYPE_INT_ARGB);
+        Random rand = new Random(isLeft ? 11111 : 22222);
+
+        // Very dark brick colors for side faces
+        int[] brickColors = {
+            0xFF4A2511, // Very dark brown
+            0xFF5A3515, // Dark brown
+            0xFF6B3F1D, // Darker
+            0xFF3D2817, // Almost black brown
+            0xFF4F3319  // Dark shade
+        };
+
+        for (int y = 0; y < 20; y++) {
+            for (int x = 0; x < 32; x++) {
+                int brickRow = (y + 2) / 5;
+                int brickCol = x / 8;
+                int brickColor = brickColors[(brickRow + brickCol) % brickColors.length];
+
+                // Add mortar
+                if (y % 5 < 1 || x % 8 < 1) {
+                    brickColor = 0xFF1A1A1A; // Very dark mortar
+                } else {
+                    // Slight variation
+                    int var = rand.nextInt(10) - 5;
+                    int r = Math.max(0, Math.min(255, ((brickColor >> 16) & 0xFF) + var));
+                    int g = Math.max(0, Math.min(255, ((brickColor >> 8) & 0xFF) + var));
+                    int b = Math.max(0, Math.min(255, (brickColor & 0xFF) + var));
+                    brickColor = (r << 16) | (g << 8) | b;
+                }
+
+                img.setRGB(x, y, brickColor | (255 << 24));
+            }
         }
 
         return img;

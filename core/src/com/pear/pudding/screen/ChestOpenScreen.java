@@ -1,6 +1,7 @@
 package com.pear.pudding.screen;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -27,22 +28,24 @@ public class ChestOpenScreen implements Screen {
     private final MyGame game;
     private final Screen previousScreen;
     private final Chest chest;
-    private final CardTemplate cardTemplate;
     private final Stage stage;
     private final SpriteBatch batch;
     private final OrthographicCamera camera;
     private BitmapFont font;
-    private Texture cardTexture;
-    private boolean uiCreated = false;
+    private Texture[] cardTextures;
 
-    private float elapsedTime = 0f;
-    private static final float ZOOM_DURATION = 0.5f;
+    private int currentCardIndex = 0;
+    private float cardRevealTimer = 0f;
+    private static final float CARD_REVEAL_DURATION = 0.8f;
+    private static final float AUTO_ADVANCE_DELAY = 3.0f;
+    private float autoAdvanceTimer = 0f;
+    private boolean allCardsShown = false;
+    private boolean uiCreated = false;
 
     public ChestOpenScreen(MyGame game, Screen previousScreen, Chest chest) {
         this.game = game;
         this.previousScreen = previousScreen;
         this.chest = chest;
-        this.cardTemplate = CardRegistry.get(chest.cardTemplateId);
 
         camera = new OrthographicCamera();
         camera.setToOrtho(false, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -61,16 +64,14 @@ public class ChestOpenScreen implements Screen {
             game.manager.finishLoading();
             Skin skin = game.manager.get("uiskin.json", Skin.class);
 
-            // Try to get font from skin, fallback to creating a simple one
             try {
                 font = skin.getFont("default");
             } catch (Exception e) {
-                // Skin doesn't have "default" font, create a basic one
                 font = new BitmapFont();
             }
 
-            // Accept button
-            TextButton acceptButton = new TextButton("Accept Card", skin);
+            // Accept button (only shown when all cards revealed)
+            TextButton acceptButton = new TextButton("Claim All", skin);
             acceptButton.setPosition(WINDOW_WIDTH / 2 - 75, 100);
             acceptButton.setSize(150, 50);
             acceptButton.addListener(new ClickListener() {
@@ -79,22 +80,56 @@ public class ChestOpenScreen implements Screen {
                     if (previousScreen instanceof WorldScreen) {
                         ((WorldScreen) previousScreen).removeChest(chest);
                     } else {
-                        chest.opened = true;  // Fallback
+                        chest.opened = true;
                     }
                     game.setScreen(previousScreen);
                 }
             });
+            acceptButton.setVisible(false);
+            acceptButton.setName("acceptButton");
             stage.addActor(acceptButton);
 
-            // Try to load card texture
-            try {
-                cardTexture = new Texture(cardTemplate.texturePath);
-                cardTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
-            } catch (Exception e) {
-                cardTexture = null;
+            // Next button (skip to next card)
+            TextButton nextButton = new TextButton("Next", skin);
+            nextButton.setPosition(WINDOW_WIDTH / 2 + 100, 100);
+            nextButton.setSize(100, 50);
+            nextButton.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    advanceToNextCard();
+                }
+            });
+            nextButton.setName("nextButton");
+            stage.addActor(nextButton);
+
+            // Load all card textures
+            cardTextures = new Texture[chest.cardTemplateIds.size()];
+            for (int i = 0; i < chest.cardTemplateIds.size(); i++) {
+                CardTemplate template = CardRegistry.get(chest.cardTemplateIds.get(i));
+                try {
+                    cardTextures[i] = new Texture(template.texturePath);
+                    cardTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                } catch (Exception e) {
+                    cardTextures[i] = null;
+                }
             }
         } catch (Exception e) {
             e.printStackTrace();
+        }
+    }
+
+    private void advanceToNextCard() {
+        currentCardIndex++;
+        cardRevealTimer = 0f;
+        autoAdvanceTimer = 0f;
+
+        if (currentCardIndex >= chest.cardTemplateIds.size()) {
+            // All cards shown
+            allCardsShown = true;
+            TextButton acceptButton = (TextButton) stage.getRoot().findActor("acceptButton");
+            if (acceptButton != null) {
+                acceptButton.setVisible(true);
+            }
         }
     }
 
@@ -108,47 +143,89 @@ public class ChestOpenScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        elapsedTime += delta;
+        // Check for Enter key to advance cards
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ENTER)) {
+            if (!allCardsShown) {
+                advanceToNextCard();
+            } else {
+                // All cards shown, treat Enter as accept
+                if (previousScreen instanceof WorldScreen) {
+                    ((WorldScreen) previousScreen).removeChest(chest);
+                } else {
+                    chest.opened = true;
+                }
+                game.setScreen(previousScreen);
+            }
+        }
+
+        cardRevealTimer += delta;
+        if (!allCardsShown) {
+            autoAdvanceTimer += delta;
+        }
+
         ScreenUtils.clear(0.1f, 0.1f, 0.15f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
-        // Calculate zoom scale (0 to 1)
-        float progress = Math.min(elapsedTime / ZOOM_DURATION, 1f);
-        float scale = 0.5f + progress * 0.5f; // Scales from 0.5 to 1.0
+        // Auto-advance to next card after delay
+        if (!allCardsShown && autoAdvanceTimer >= AUTO_ADVANCE_DELAY) {
+            advanceToNextCard();
+        }
+
+        // Calculate zoom scale for card reveal (0 to 1)
+        float revealProgress = Math.min(cardRevealTimer / CARD_REVEAL_DURATION, 1f);
+        float scale = 0.3f + revealProgress * 0.7f; // Scales from 0.3 to 1.0
+        float alpha = revealProgress; // Fades in from transparent
 
         batch.setProjectionMatrix(camera.combined);
         batch.begin();
 
-        // Draw card centered, zoomed
-        float cardWidth = 120 * scale;
-        float cardHeight = 160 * scale;
-        float cardX = WINDOW_WIDTH / 2 - cardWidth / 2;
-        float cardY = WINDOW_HEIGHT / 2 + 50 - cardHeight / 2;
+        if (currentCardIndex < chest.cardTemplateIds.size()) {
+            CardTemplate cardTemplate = CardRegistry.get(chest.cardTemplateIds.get(currentCardIndex));
 
-        if (cardTexture != null) {
-            batch.draw(cardTexture, cardX, cardY, cardWidth, cardHeight);
-        } else {
-            // Placeholder: colored rectangle with stats
-            batch.setColor(0.2f, 0.4f, 0.6f, 1);
-            batch.draw(getPlaceholderTexture(), cardX, cardY, cardWidth, cardHeight);
+            // Draw card centered, zoomed with fade-in
+            float cardWidth = 120 * scale;
+            float cardHeight = 160 * scale;
+            float cardX = WINDOW_WIDTH / 2 - cardWidth / 2;
+            float cardY = WINDOW_HEIGHT / 2 + 50 - cardHeight / 2;
+
+            batch.setColor(1, 1, 1, alpha);
+            if (cardTextures[currentCardIndex] != null) {
+                batch.draw(cardTextures[currentCardIndex], cardX, cardY, cardWidth, cardHeight);
+            } else {
+                batch.setColor(0.2f, 0.4f, 0.6f, alpha);
+                batch.draw(getPlaceholderTexture(), cardX, cardY, cardWidth, cardHeight);
+            }
             batch.setColor(1, 1, 1, 1);
-        }
 
-        // Draw card name and stats
-        if (font != null) {
-            font.setColor(1, 1, 1, 1);
-            font.draw(batch, cardTemplate.displayName, cardX + 10, cardY + cardHeight - 20);
-            font.draw(batch, "Cost: " + cardTemplate.baseCost, cardX + 10, cardY + 40);
-            font.draw(batch, "ATK: " + cardTemplate.baseAttack + " HP: " + cardTemplate.baseHealth, cardX + 10, cardY + 20);
+            // Draw card name and stats
+            if (font != null) {
+                font.setColor(1, 1, 1, alpha);
+                font.draw(batch, cardTemplate.displayName, cardX + 10, cardY + cardHeight - 20);
+                font.draw(batch, "Cost: " + cardTemplate.baseCost, cardX + 10, cardY + 40);
+                font.draw(batch, "ATK: " + cardTemplate.baseAttack + " HP: " + cardTemplate.baseHealth, cardX + 10, cardY + 20);
+            }
+
+            // Draw progress indicator and hint
+            if (chest.cardTemplateIds.size() > 1 && font != null) {
+                font.setColor(1, 1, 1, 1);
+                font.draw(batch, "Card " + (currentCardIndex + 1) + " / " + chest.cardTemplateIds.size(), WINDOW_WIDTH / 2 - 50, WINDOW_HEIGHT - 50);
+                font.setColor(0.7f, 0.7f, 1, 1);
+                font.draw(batch, "Press ENTER to skip", WINDOW_WIDTH / 2 - 70, WINDOW_HEIGHT - 80);
+            }
         }
 
         batch.end();
+
+        // Update button visibility
+        TextButton nextButton = (TextButton) stage.getRoot().findActor("nextButton");
+        if (nextButton != null) {
+            nextButton.setVisible(!allCardsShown);
+        }
 
         stage.draw();
     }
 
     private Texture getPlaceholderTexture() {
-        // Return a white pixel that can be scaled
         Texture placeholder = new Texture(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         com.badlogic.gdx.graphics.Pixmap pixmap = new com.badlogic.gdx.graphics.Pixmap(1, 1, com.badlogic.gdx.graphics.Pixmap.Format.RGBA8888);
         pixmap.setColor(0.2f, 0.4f, 0.6f, 1);
@@ -164,23 +241,24 @@ public class ChestOpenScreen implements Screen {
     }
 
     @Override
-    public void pause() {
-    }
+    public void pause() {}
 
     @Override
-    public void resume() {
-    }
+    public void resume() {}
 
     @Override
-    public void hide() {
-    }
+    public void hide() {}
 
     @Override
     public void dispose() {
         batch.dispose();
         stage.dispose();
-        if (cardTexture != null) {
-            cardTexture.dispose();
+        if (cardTextures != null) {
+            for (Texture texture : cardTextures) {
+                if (texture != null) {
+                    texture.dispose();
+                }
+            }
         }
     }
 }

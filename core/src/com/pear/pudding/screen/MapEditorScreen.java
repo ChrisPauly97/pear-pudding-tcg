@@ -32,6 +32,10 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private OrthographicCamera hudCam;
     private Texture[] grassTextures;
     private Texture[] wallTextures;
+    private Texture brickWallTop;
+    private Texture brickWallFront;
+    private Texture brickWallLeft;
+    private Texture brickWallRight;
     private Texture enemyTexture;
     private Texture chestTexture;
 
@@ -71,6 +75,9 @@ public class MapEditorScreen implements Screen, InputProcessor {
     // Raw screen mouse position
     private int lastMouseX = -1;
     private int lastMouseY = -1;
+
+    // Wall height editing
+    private static final int MAX_WALL_HEIGHT = 5;
 
     public MapEditorScreen(MyGame game) {
         this.game = game;
@@ -148,6 +155,14 @@ public class MapEditorScreen implements Screen, InputProcessor {
                     wallTextures[i] = new Texture("wall" + i + ".png");
                     wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 }
+                brickWallTop = new Texture("wallbrick_top.png");
+                brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallFront = new Texture("wallbrick_front.png");
+                brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallLeft = new Texture("wallbrick_left.png");
+                brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallRight = new Texture("wallbrick_right.png");
+                brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 enemyTexture = new Texture("enemy.png");
                 enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 chestTexture = new Texture("chest.png");
@@ -253,12 +268,35 @@ public class MapEditorScreen implements Screen, InputProcessor {
                 if (tile == 0 && grassTextures != null) {
                     spriteBatch.setColor(1, 1, 1, 1);
                     spriteBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
-                } else if (tile != 0 && wallTextures != null) {
+                } else if (tile != 0 && brickWallTop != null) {
+                    // Render stacked brick walls by height
+                    byte wallHeight = worldMap.getHeight(tx, ty);
+
+                    // Draw each level of the wall
+                    for (int level = 0; level < wallHeight; level++) {
+                        float levelOffsetY = level * WALL_FACE_H;
+
+                        // Left side face
+                        float leftX = sx;
+                        float leftY = sy + ISO_HALF_H + levelOffsetY;
+                        spriteBatch.setColor(0.7f, 0.7f, 0.7f, 1);
+                        spriteBatch.draw(brickWallLeft, leftX, leftY, ISO_HALF_W, WALL_FACE_H);
+
+                        // Right side face
+                        float rightX = sx + ISO_HALF_W;
+                        float rightY = sy + ISO_HALF_H + levelOffsetY;
+                        spriteBatch.setColor(0.65f, 0.65f, 0.65f, 1);
+                        spriteBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
+
+                        // Front face
+                        spriteBatch.setColor(0.75f, 0.75f, 0.75f, 1);
+                        spriteBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
+                    }
+
+                    // Top face (drawn last, positioned at final height)
+                    float topFaceY = sy + (wallHeight * WALL_FACE_H);
                     spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(wallTextures[hash % 8], sx, sy, ISO_TW, ISO_TH);
-                    spriteBatch.setColor(0.45f, 0.45f, 0.45f, 1);
-                    spriteBatch.draw(wallTextures[hash % 8], sx, sy - WALL_FACE_H, ISO_TW, WALL_FACE_H);
-                    spriteBatch.setColor(1, 1, 1, 1);
+                    spriteBatch.draw(brickWallTop, sx, topFaceY, ISO_TW, ISO_TH);
                 }
             }
         }
@@ -373,8 +411,17 @@ public class MapEditorScreen implements Screen, InputProcessor {
             font.draw(hudBatch, "Menu",  menuButtonX        + 17, WINDOW_HEIGHT - TOOLBAR_HEIGHT + 25);
             font.setColor(1, 1, 1, 1);
             font.draw(hudBatch, "Brush: " + currentBrush.name(), WINDOW_WIDTH - 250, 20);
-            if (hoverTileX >= 0 && hoverTileY >= 0)
+            if (hoverTileX >= 0 && hoverTileY >= 0) {
                 font.draw(hudBatch, "[" + hoverTileX + ", " + hoverTileY + "]", WINDOW_WIDTH / 2 - 40f, 20);
+
+                // Show wall height if hovering over wall
+                if (worldMap.getTile(hoverTileX, hoverTileY) != 0) {
+                    byte height = worldMap.getHeight(hoverTileX, hoverTileY);
+                    font.setColor(1, 1, 0, 1);
+                    font.draw(hudBatch, "Height: " + height + " (scroll to change)", WINDOW_WIDTH / 2 - 100f, 40);
+                    font.setColor(1, 1, 1, 1);
+                }
+            }
             if (saveMessageTime > 0) {
                 font.setColor(0, 1, 0, 1);
                 font.draw(hudBatch, "Saved!", WINDOW_WIDTH / 2 - 30, 40);
@@ -522,7 +569,30 @@ public class MapEditorScreen implements Screen, InputProcessor {
         }
     }
 
-    @Override public boolean scrolled(float amountX, float amountY) { return false; }
+    @Override
+    public boolean scrolled(float amountX, float amountY) {
+        // Change wall height when hovering over a wall
+        if (hoverTileX >= 0 && hoverTileY >= 0 && hoverTileX < WorldMap.MAP_WIDTH && hoverTileY < WorldMap.MAP_HEIGHT) {
+            if (worldMap.getTile(hoverTileX, hoverTileY) != 0) {
+                byte currentHeight = worldMap.getHeight(hoverTileX, hoverTileY);
+                byte newHeight = currentHeight;
+
+                if (amountY > 0) {
+                    // Scroll up = increase height
+                    newHeight = (byte) Math.min(MAX_WALL_HEIGHT, currentHeight + 1);
+                } else if (amountY < 0) {
+                    // Scroll down = decrease height
+                    newHeight = (byte) Math.max(1, currentHeight - 1);
+                }
+
+                if (newHeight != currentHeight) {
+                    worldMap.setHeight(hoverTileX, hoverTileY, newHeight);
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
     @Override public boolean keyTyped(char character) { return false; }
     @Override public boolean touchCancelled(int screenX, int screenY, int pointer, int button) { return false; }
 
@@ -545,5 +615,11 @@ public class MapEditorScreen implements Screen, InputProcessor {
             for (Texture t : grassTextures) if (t != null) t.dispose();
         if (wallTextures != null)
             for (Texture t : wallTextures) if (t != null) t.dispose();
+        if (brickWallTop != null) brickWallTop.dispose();
+        if (brickWallFront != null) brickWallFront.dispose();
+        if (brickWallLeft != null) brickWallLeft.dispose();
+        if (brickWallRight != null) brickWallRight.dispose();
+        if (enemyTexture != null) enemyTexture.dispose();
+        if (chestTexture != null) chestTexture.dispose();
     }
 }

@@ -34,6 +34,10 @@ public class WorldScreen implements Screen, InputProcessor {
     private BitmapFont font;
     private Texture[] grassTextures;
     private Texture[] wallTextures;
+    private Texture brickWallTop;
+    private Texture brickWallFront;
+    private Texture brickWallLeft;
+    private Texture brickWallRight;
     private Texture playerTexture;
     private Texture enemyTexture;
     private Texture chestTexture;
@@ -122,6 +126,14 @@ public class WorldScreen implements Screen, InputProcessor {
                     wallTextures[i] = new Texture("wall" + i + ".png");
                     wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 }
+                brickWallTop = new Texture("wallbrick_top.png");
+                brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallFront = new Texture("wallbrick_front.png");
+                brickWallFront.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallLeft = new Texture("wallbrick_left.png");
+                brickWallLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                brickWallRight = new Texture("wallbrick_right.png");
+                brickWallRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 playerTexture = new Texture("player.png");
                 playerTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 enemyTexture = new Texture("enemy.png");
@@ -239,16 +251,22 @@ public class WorldScreen implements Screen, InputProcessor {
             return;
         }
 
-        if (groundZ >= WALL_HEIGHT) {
+        // Check ground height under player
+        byte wallHeightBelow = worldMap.getWallHeight(playerX, playerY);
+        float surfaceHeight = wallHeightBelow > 0 ? wallHeightBelow * WALL_FACE_H : 0f;
+
+        if (groundZ >= surfaceHeight + WALL_FACE_H) {
+            // Player is in the air on a high platform, allow movement and fall
             playerX += dx;
             playerY += dy;
-            if (!worldMap.isWall(playerX, playerY)) {
+            if (worldMap.getWallHeight(playerX, playerY) <= groundZ / WALL_FACE_H) {
                 isJumping = true;
                 velocityZ = 0;
             }
             return;
         }
 
+        // Test movement at four corners
         float[] testPoints = {
             playerX - PLAYER_RADIUS, playerY - PLAYER_RADIUS,
             playerX + PLAYER_RADIUS, playerY - PLAYER_RADIUS,
@@ -262,8 +280,11 @@ public class WorldScreen implements Screen, InputProcessor {
             if (worldMap.isWall(newX, newY)) return;
         }
 
+        // Update player ground height based on new position
         playerX += dx;
         playerY += dy;
+        byte newWallHeight = worldMap.getWallHeight(playerX, playerY);
+        groundZ = newWallHeight > 0 ? newWallHeight * WALL_FACE_H : 0f;
     }
 
     private void draw() {
@@ -300,14 +321,35 @@ public class WorldScreen implements Screen, InputProcessor {
                 if (tile == 0 && grassTextures != null) {
                     spriteBatch.setColor(1, 1, 1, 1);
                     spriteBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
-                } else if (tile != 0 && wallTextures != null) {
-                    // Top face
+                } else if (tile != 0 && brickWallTop != null) {
+                    // Isometric brick wall - stack by height
+                    byte wallHeight = worldMap.getHeight(tx, ty);
+
+                    // Draw each level of the wall
+                    for (int level = 0; level < wallHeight; level++) {
+                        float levelOffsetY = level * WALL_FACE_H;
+
+                        // Left side face - extends from left vertex downward
+                        float leftX = sx;
+                        float leftY = sy + ISO_HALF_H + levelOffsetY;
+                        spriteBatch.setColor(0.7f, 0.7f, 0.7f, 1);
+                        spriteBatch.draw(brickWallLeft, leftX, leftY, ISO_HALF_W, WALL_FACE_H);
+
+                        // Right side face - extends from right vertex downward
+                        float rightX = sx + ISO_HALF_W;
+                        float rightY = sy + ISO_HALF_H + levelOffsetY;
+                        spriteBatch.setColor(0.65f, 0.65f, 0.65f, 1);
+                        spriteBatch.draw(brickWallRight, rightX, rightY, ISO_HALF_W, WALL_FACE_H);
+
+                        // Front face - below the diamond (or below previous level)
+                        spriteBatch.setColor(0.75f, 0.75f, 0.75f, 1);
+                        spriteBatch.draw(brickWallFront, sx, sy + ISO_TH + levelOffsetY, ISO_TW, WALL_FACE_H);
+                    }
+
+                    // Top face (drawn last so it's on top, positioned at final height)
+                    float topFaceY = sy + (wallHeight * WALL_FACE_H);
                     spriteBatch.setColor(1, 1, 1, 1);
-                    spriteBatch.draw(wallTextures[hash % 8], sx, sy, ISO_TW, ISO_TH);
-                    // Front face (darker, drawn below top face)
-                    spriteBatch.setColor(0.45f, 0.45f, 0.45f, 1);
-                    spriteBatch.draw(wallTextures[hash % 8], sx, sy - WALL_FACE_H, ISO_TW, WALL_FACE_H);
-                    spriteBatch.setColor(1, 1, 1, 1);
+                    spriteBatch.draw(brickWallTop, sx, topFaceY, ISO_TW, ISO_TH);
                 }
             }
         }
@@ -366,17 +408,27 @@ public class WorldScreen implements Screen, InputProcessor {
         shapeRenderer.setProjectionMatrix(camera.combined);
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
 
-        // Player shadow when jumping
+        // Player shadow when jumping (isometric ellipse on ground plane)
         if (isJumping) {
             float isoX = toIsoX(playerX, playerY);
             float isoY = toIsoY(playerX, playerY);
             float surfaceBelow = worldMap.isWall(playerX, playerY) ? WALL_HEIGHT : 0f;
             float heightAbove = playerZ - surfaceBelow;
-            float shadowScale = Math.max(0.4f, 1f - heightAbove / 60f);
-            float shadowR = PLAYER_RADIUS * shadowScale;
-            float shadowIsoY = toIsoY(playerX, playerY) + surfaceBelow * 0.5f;
-            shapeRenderer.setColor(0.05f, 0.1f, 0.05f, 0.6f);
-            shapeRenderer.rect(isoX - shadowR, shadowIsoY - shadowR, shadowR * 2, shadowR * 2);
+            float shadowAlpha = Math.max(0.2f, 1f - heightAbove / 60f);
+
+            // Shadow scales with height (fades as player jumps higher)
+            float shadowScale = Math.max(0.3f, 1f - heightAbove / 80f);
+
+            // In isometric space: width is 2x height for proper perspective
+            float shadowWidth = PLAYER_RADIUS * shadowScale * 2f;   // horizontal (x-axis in iso)
+            float shadowHeight = PLAYER_RADIUS * shadowScale * 0.8f; // vertical (y-axis in iso)
+
+            // Position on ground plane
+            float shadowIsoY = isoY - PLAYER_RADIUS * 0.5f;
+
+            shapeRenderer.setColor(0.05f, 0.1f, 0.05f, shadowAlpha);
+            // Draw shadow as a wider ellipse to match isometric perspective
+            shapeRenderer.ellipse(isoX - shadowWidth, shadowIsoY - shadowHeight, shadowWidth * 2, shadowHeight * 2);
         }
 
         // [E] popup box above nearby entity
@@ -554,7 +606,13 @@ public class WorldScreen implements Screen, InputProcessor {
     public void resume() {}
 
     @Override
-    public void hide() {}
+    public void hide() {
+        // Reset movement flags when leaving screen to prevent stuck movement
+        moveUp = false;
+        moveDown = false;
+        moveLeft = false;
+        moveRight = false;
+    }
 
     @Override
     public void dispose() {
@@ -570,6 +628,13 @@ public class WorldScreen implements Screen, InputProcessor {
                 if (texture != null) texture.dispose();
             }
         }
+        if (brickWallTop != null) brickWallTop.dispose();
+        if (brickWallFront != null) brickWallFront.dispose();
+        if (brickWallLeft != null) brickWallLeft.dispose();
+        if (brickWallRight != null) brickWallRight.dispose();
+        if (playerTexture != null) playerTexture.dispose();
+        if (enemyTexture != null) enemyTexture.dispose();
+        if (chestTexture != null) chestTexture.dispose();
         if (footstepSound != null) {
             footstepSound.dispose();
         }
