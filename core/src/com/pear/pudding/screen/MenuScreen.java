@@ -70,17 +70,13 @@ public class MenuScreen implements Screen {
         playButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                // Load world assets and then go to world
-                AssetLoadingScreen.loadWorldAssets(game.manager);
-                game.setScreen(new WorldScreen(game));
+                game.setScreen(new GameLoadingScreen(game, GameLoadingScreen.ScreenType.WORLD));
             }
         });
         editorButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                // Load world assets and then go to editor
-                AssetLoadingScreen.loadWorldAssets(game.manager);
-                game.setScreen(new MapEditorScreen(game));
+                game.setScreen(new GameLoadingScreen(game, GameLoadingScreen.ScreenType.EDITOR));
             }
         });
         optionsButton.addListener(new ClickListener() {

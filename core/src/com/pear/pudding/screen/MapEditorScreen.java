@@ -11,9 +11,11 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Dialog;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
@@ -61,6 +63,8 @@ public class MapEditorScreen implements Screen, InputProcessor {
     private boolean moveUp, moveDown, moveLeft, moveRight;
     private float saveMessageTime = 0;
     private static final float SAVE_MESSAGE_DURATION = 1.5f;
+    private boolean texturesLoaded = false;
+    private boolean assetsFullyLoaded = false;
 
     // Map list overlay
     private boolean showMapListOverlay = false;
@@ -147,14 +151,6 @@ public class MapEditorScreen implements Screen, InputProcessor {
 
     @Override
     public void show() {
-        // Ensure world assets are queued for loading and fully loaded
-        AssetLoadingScreen.loadWorldAssets(game.manager);
-        // Process asset loading until world assets are ready
-        while (!game.manager.update() && !game.manager.contains("grass0.png", com.badlogic.gdx.graphics.Texture.class)) {
-            // Keep loading until grass0.png is available
-        }
-        loadTextures();
-
         mapNames = WorldMap.listMapNames();
 
         // Create Scene2D toolbar stage
@@ -200,19 +196,7 @@ public class MapEditorScreen implements Screen, InputProcessor {
         newButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                Gdx.input.getTextInput(new Input.TextInputListener() {
-                    @Override
-                    public void input(String text) {
-                        if (!text.trim().isEmpty()) {
-                            loadMap(text.trim());
-                            updateBrushHighlight();
-                        }
-                    }
-
-                    @Override
-                    public void canceled() {
-                    }
-                }, "New map name", "", "map name");
+                showMapNameDialog(skin, "New Map", "Enter map name", "");
             }
         });
         toolbar.add(newButton).width(60).height(32).padRight(2);
@@ -286,8 +270,10 @@ public class MapEditorScreen implements Screen, InputProcessor {
                 enemyTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 chestTexture = game.manager.get("chest.png", Texture.class);
                 chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                texturesLoaded = true;
             } catch (Exception e) {
-                // Assets not ready yet, will retry next frame
+                // Should not happen since assetsFullyLoaded is true
+                e.printStackTrace();
             }
         }
     }
@@ -305,6 +291,15 @@ public class MapEditorScreen implements Screen, InputProcessor {
 
     @Override
     public void render(float delta) {
+        // Process asset loading
+        if (!assetsFullyLoaded) {
+            assetsFullyLoaded = game.manager.update();  // Returns true when all queued assets are loaded
+        }
+
+        // Ensure textures are loaded before rendering
+        if (!texturesLoaded && assetsFullyLoaded) {
+            loadTextures();
+        }
         update(delta);
         draw();
     }
@@ -356,11 +351,13 @@ public class MapEditorScreen implements Screen, InputProcessor {
     }
 
     private void draw() {
-        // Lazy load textures on first render (defer until assets are ready)
-        loadTextures();
-
         Gdx.gl.glClearColor(0.12f, 0.18f, 0.12f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        // Skip world rendering if textures aren't loaded yet
+        if (!texturesLoaded) {
+            return;
+        }
 
         // --- Iso tile rendering: back-to-front ---
         worldBatch.setProjectionMatrix(camera.combined);
@@ -668,16 +665,7 @@ public class MapEditorScreen implements Screen, InputProcessor {
             case DOOR: {
                 float wx = tx * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
                 float wy = ty * WorldMap.TILE_SIZE + WorldMap.TILE_SIZE / 2f;
-                Gdx.input.getTextInput(new Input.TextInputListener() {
-                    @Override
-                    public void input(String text) {
-                        worldMap.addDoor(new Door("door_" + System.nanoTime(), wx, wy, text.trim()));
-                    }
-
-                    @Override
-                    public void canceled() {
-                    }
-                }, "Target map name (empty=exit)", "", "map name");
+                showDoorNameDialog(wx, wy);
                 break;
             }
             case PLAYER_SPAWN:
@@ -888,6 +876,52 @@ public class MapEditorScreen implements Screen, InputProcessor {
         if (toolbarStage != null) {
             toolbarStage.getViewport().update(width, height, true);
         }
+    }
+
+    private void showMapNameDialog(Skin skin, String title, String prompt, String defaultText) {
+        final TextField nameField = new TextField(defaultText, skin);
+        final Dialog dialog = new Dialog(title, skin) {
+            @Override
+            protected void result(Object object) {
+                if ((Boolean) object) {
+                    String mapName = nameField.getText().trim();
+                    if (!mapName.isEmpty()) {
+                        loadMap(mapName);
+                        updateBrushHighlight();
+                    }
+                }
+            }
+        };
+
+        dialog.getContentTable().add(prompt).padRight(10);
+        dialog.getContentTable().add(nameField).width(200).row();
+        dialog.button("OK", true);
+        dialog.button("Cancel", false);
+        dialog.key(com.badlogic.gdx.Input.Keys.ENTER, true);
+        dialog.key(com.badlogic.gdx.Input.Keys.ESCAPE, false);
+        dialog.show(toolbarStage);
+    }
+
+    private void showDoorNameDialog(float wx, float wy) {
+        Skin skin = game.manager.get("uiskin.json", Skin.class);
+        final TextField targetField = new TextField("", skin);
+        final Dialog dialog = new Dialog("Door Target Map", skin) {
+            @Override
+            protected void result(Object object) {
+                if ((Boolean) object) {
+                    String target = targetField.getText().trim();
+                    worldMap.addDoor(new Door("door_" + System.nanoTime(), wx, wy, target));
+                }
+            }
+        };
+
+        dialog.getContentTable().add("Target map (empty=exit)").padRight(10);
+        dialog.getContentTable().add(targetField).width(200).row();
+        dialog.button("OK", true);
+        dialog.button("Cancel", false);
+        dialog.key(com.badlogic.gdx.Input.Keys.ENTER, true);
+        dialog.key(com.badlogic.gdx.Input.Keys.ESCAPE, false);
+        dialog.show(toolbarStage);
     }
 
     @Override public void pause() {}

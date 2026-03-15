@@ -84,6 +84,8 @@ public class WorldScreen implements Screen, InputProcessor {
     private float velocityZ = 0f;
     private float groundZ = 0f;
     private boolean isJumping = false;
+    private boolean texturesLoaded = false;
+    private boolean assetsFullyLoaded = false;
 
     private float footstepTimer = 0f;
 
@@ -162,13 +164,6 @@ public class WorldScreen implements Screen, InputProcessor {
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this);
-        // Ensure world assets are queued for loading and fully loaded
-        AssetLoadingScreen.loadWorldAssets(game.manager);
-        // Process asset loading until world assets are ready
-        while (!game.manager.update() && !game.manager.contains("grass0.png", Texture.class)) {
-            // Keep loading until grass0.png is available
-        }
-        loadTextures();
         hudCamera = new OrthographicCamera(1800, 1000);
         hudCamera.position.set(900, 500, 0);
         hudCamera.update();
@@ -202,8 +197,10 @@ public class WorldScreen implements Screen, InputProcessor {
                 chestTexture = game.manager.get("chest.png", Texture.class);
                 chestTexture.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 footstepSound = game.manager.get("freesound_community-running-in-grass-6237.mp3", Sound.class);
+                texturesLoaded = true;
             } catch (Exception e) {
-                // Assets not ready yet, will retry next frame
+                // Should not happen since assetsFullyLoaded is true
+                e.printStackTrace();
             }
         }
     }
@@ -222,6 +219,15 @@ public class WorldScreen implements Screen, InputProcessor {
 
     @Override
     public void render(float delta) {
+        // Process asset loading
+        if (!assetsFullyLoaded) {
+            assetsFullyLoaded = game.manager.update();  // Returns true when all queued assets are loaded
+        }
+
+        // Ensure textures are loaded before rendering
+        if (!texturesLoaded && assetsFullyLoaded) {
+            loadTextures();
+        }
         update(delta);
         draw();
     }
@@ -391,6 +397,11 @@ public class WorldScreen implements Screen, InputProcessor {
     private void draw() {
         Gdx.gl.glClearColor(0.12f, 0.18f, 0.12f, 1);
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+
+        // Skip world rendering if textures aren't loaded yet
+        if (!texturesLoaded) {
+            return;
+        }
 
         // --- Tile rendering: back-to-front diagonal order ---
         worldBatch.setProjectionMatrix(camera.combined);
