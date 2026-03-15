@@ -290,9 +290,9 @@ public class WorldScreen implements Screen, InputProcessor {
 
             // Only collide if:
             // 1. Wall is too tall to climb AND
-            // 2. Wall is in front of player visually AND
+            // 2. Wall is strictly in front of player visually AND
             // 3. Player is below the top surface of the wall (not standing on it)
-            if (wallHeight > CLIMBABLE_HEIGHT && testDepth >= playerDepth && groundZ < wallTopHeight) {
+            if (wallHeight > CLIMBABLE_HEIGHT && testDepth > playerDepth && groundZ < wallTopHeight) {
                 return;  // Collision - wall blocks movement
             }
         }
@@ -303,7 +303,7 @@ public class WorldScreen implements Screen, InputProcessor {
         int centerDepth = centerTileX + centerTileY;
         byte centerWallHeight = worldMap.getWallHeight(newPlayerX, newPlayerY);
         float centerWallTopHeight = centerWallHeight * WALL_FACE_H;
-        if (centerWallHeight > CLIMBABLE_HEIGHT && centerDepth >= playerDepth && groundZ < centerWallTopHeight) {
+        if (centerWallHeight > CLIMBABLE_HEIGHT && centerDepth > playerDepth && groundZ < centerWallTopHeight) {
             return;  // Collision - wall blocks movement
         }
 
