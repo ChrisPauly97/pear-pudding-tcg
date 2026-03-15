@@ -33,10 +33,16 @@ public class GameRenderer implements GameEventListener {
      * Preload card textures from assets.
      */
     private void preloadCardTextures() {
-        String[] cardTypes = {"ghost", "skeleton", "zombie", "ghoul"};
-        for (String cardType : cardTypes) {
+        // Map of card type to actual filename
+        java.util.Map<String, String> cardFiles = new java.util.HashMap<>();
+        cardFiles.put("ghost", "ghostnew.png");
+        cardFiles.put("skeleton", "skeleton.jpg");
+        cardFiles.put("zombie", "ghoul.png");  // Use ghoul for zombie (no zombie.png exists)
+        cardFiles.put("ghoul", "ghoul.png");
+
+        for (String cardType : cardFiles.keySet()) {
             try {
-                String filename = cardType + "new.png";
+                String filename = cardFiles.get(cardType);
                 com.badlogic.gdx.files.FileHandle file = com.badlogic.gdx.Gdx.files.internal(filename);
                 if (file.exists()) {
                     cardTextures.put(cardType, new com.badlogic.gdx.graphics.Texture(file));
@@ -91,14 +97,14 @@ public class GameRenderer implements GameEventListener {
     }
 
     /**
-     * Renders enemy board (centered, below enemy hero).
+     * Renders enemy board (centered, above enemy hero, touching player board).
      */
     private void renderEnemyBoard(Batch batch) {
         float boardWidth = 700f;
-        float boardHeight = 150f;
+        float boardHeight = 140f;
         float centerX = 900f;  // Center of 1800px screen
         float boardX = centerX - boardWidth / 2;
-        float boardY = 350f;  // Below enemy hero
+        float boardY = 550f;  // Below enemy hero
 
         // Draw zone boundary
         batch.setColor(new Color(0.3f, 0.2f, 0.2f, 0.5f));
@@ -106,9 +112,15 @@ public class GameRenderer implements GameEventListener {
         batch.setColor(Color.WHITE);
         batch.draw(RenderConstants.getPixelTexture(), boardX, boardY, boardWidth, 2f);  // Top line
 
-        // Render cards
-        float cardsStartX = boardX + 90f;
-        renderZoneCards(batch, gameState.player2.getBoard(), cardsStartX, boardY + 15f, false);
+        // Check if dragged card can attack
+        boolean canDraggedCardAttack = false;
+        if ("board".equals(uiState.dragSourceZone) && uiState.draggingCard != null) {
+            canDraggedCardAttack = uiState.draggingCard.canAttack();
+        }
+
+        // Render cards (centered with 10px margin on each side: 5*120 + 4*20 = 680, leaves 20px total)
+        float cardsStartX = boardX + 10f;
+        renderZoneCardsWithGap(batch, gameState.player2.getBoard(), cardsStartX, boardY + 15f, false, uiState.dragSourceZone, null, canDraggedCardAttack);
     }
 
     /**
@@ -116,10 +128,10 @@ public class GameRenderer implements GameEventListener {
      */
     private void renderPlayerBoard(Batch batch) {
         float boardWidth = 700f;
-        float boardHeight = 150f;
+        float boardHeight = 140f;
         float centerX = 900f;  // Center of 1800px screen
         float boardX = centerX - boardWidth / 2;
-        float boardY = 200f;  // Above player hero
+        float boardY = 290f;  // Above player hero
 
         // Draw zone boundary
         batch.setColor(new Color(0.2f, 0.3f, 0.4f, 0.5f));
@@ -127,28 +139,142 @@ public class GameRenderer implements GameEventListener {
         batch.setColor(Color.WHITE);
         batch.draw(RenderConstants.getPixelTexture(), boardX, boardY, boardWidth, 2f);  // Top line
 
-        // Render cards
-        float cardsStartX = boardX + 90f;
-        renderZoneCards(batch, gameState.player1.getBoard(), cardsStartX, boardY + 15f, true);
+        // Check if dragged card can attack
+        boolean canDraggedCardAttack = false;
+        if ("board".equals(uiState.dragSourceZone) && uiState.draggingCard != null) {
+            canDraggedCardAttack = uiState.draggingCard.canAttack();
+        }
+
+        // Render cards with hover gap (centered with 10px margin on each side)
+        float cardsStartX = boardX + 10f;
+        renderZoneCardsWithGap(batch, gameState.player1.getBoard(), cardsStartX, boardY + 15f, true, uiState.dragSourceZone, uiState.boardHoverSlot, canDraggedCardAttack);
     }
 
     /**
-     * Renders all cards in a zone.
+     * Renders all cards in a zone with optional context.
      */
-    private void renderZoneCards(Batch batch, ZoneState zone, float startX, float y, boolean faceUp) {
+    private void renderZoneCards(Batch batch, ZoneState zone, float startX, float y, boolean isPlayerZone) {
+        renderZoneCards(batch, zone, startX, y, isPlayerZone, null);
+    }
+
+    /**
+     * Renders all cards in a zone with context-aware outline colors.
+     */
+    private void renderZoneCards(Batch batch, ZoneState zone, float startX, float y, boolean isPlayerZone, String dragSourceZone) {
+        boolean canDraggedCardAttack = false;
+        if ("board".equals(dragSourceZone) && uiState.draggingCard != null) {
+            canDraggedCardAttack = uiState.draggingCard.canAttack();
+        }
+        renderZoneCardsWithGap(batch, zone, startX, y, isPlayerZone, dragSourceZone, null, canDraggedCardAttack);
+    }
+
+    /**
+     * Renders all cards in a zone with a hover gap for drag preview.
+     */
+    private void renderZoneCardsWithGap(Batch batch, ZoneState zone, float startX, float y, boolean isPlayerZone, String dragSourceZone, Integer hoverSlot, boolean canDraggedCardAttack) {
         float cardWidth = 120f;
         float cardHeight = 160f;
         float spacing = 20f;
-        float currentX = startX;
 
-        for (int i = 0; i < zone.capacity; i++) {
-            String instanceId = zone.getCardAt(i);
-            if (instanceId != null) {
-                CardInstance card = gameState.cardRepository.find(instanceId);
-                if (card != null) {
-                    renderCard(batch, card, currentX, y, cardWidth, cardHeight);
+        boolean isDraggingBoard = "board".equals(dragSourceZone);
+        boolean isDraggingFromHand = "hand".equals(dragSourceZone) && isPlayerZone;
+        boolean isDraggingFromBoard = isDraggingBoard && isPlayerZone;
+
+        // If dragging from hand or board over player board with hover slot, rebalance the display
+        if ((isDraggingFromHand || isDraggingFromBoard) && hoverSlot != null) {
+            String[] rebalanced = computeRebalancedSlots(zone, hoverSlot);
+            renderRebalancedZone(batch, rebalanced, startX, y, isPlayerZone, isDraggingBoard && canDraggedCardAttack, cardWidth, cardHeight, spacing);
+        } else {
+            // Normal rendering
+            for (int i = 0; i < zone.capacity; i++) {
+                String instanceId = zone.getCardAt(i);
+                if (instanceId != null) {
+                    CardInstance card = gameState.cardRepository.find(instanceId);
+                    if (card != null) {
+                        float cardX = startX + i * (cardWidth + spacing);
+                        Color outlineColor = null;
+
+                        if (isPlayerZone) {
+                            // Player cards: green if playable (in hand) or can attack (on board)
+                            if (card.getCurrentZone() == ZoneType.HAND && isCardPlayable(card)) {
+                                outlineColor = Color.GREEN;
+                            } else if (card.getCurrentZone() == ZoneType.BOARD && card.canAttack()) {
+                                outlineColor = Color.GREEN;
+                            }
+                        } else {
+                            // Enemy cards: red if dragging an attackable board card (valid attack target)
+                            if (isDraggingBoard && canDraggedCardAttack && card.getCurrentZone() == ZoneType.BOARD) {
+                                outlineColor = Color.RED;
+                            }
+                        }
+
+                        renderCard(batch, card, cardX, y, cardWidth, cardHeight, outlineColor);
+                    }
                 }
-                currentX += cardWidth + spacing;
+            }
+        }
+    }
+
+    /**
+     * Computes rebalanced slot arrangement with dragged card at target position.
+     * Other cards shift to make room.
+     */
+    private String[] computeRebalancedSlots(ZoneState zone, int targetSlot) {
+        String[] result = new String[zone.capacity];
+        java.util.List<String> cardIds = new java.util.ArrayList<>();
+
+        // Collect all cards except the dragged one
+        for (int i = 0; i < zone.capacity; i++) {
+            String id = zone.getCardAt(i);
+            if (id != null && !id.equals(uiState.draggingCard.getInstanceId())) {
+                cardIds.add(id);
+            }
+        }
+
+        // Fill slots: cards before target stay in order, then gap, then remaining cards
+        int writeIndex = 0;
+        for (int i = 0; i < cardIds.size(); i++) {
+            if (writeIndex == targetSlot) {
+                writeIndex++; // Skip target slot (for dragged card)
+            }
+            result[writeIndex++] = cardIds.get(i);
+        }
+
+        return result;
+    }
+
+    /**
+     * Renders a zone using rebalanced slot positions.
+     */
+    private void renderRebalancedZone(Batch batch, String[] rebalancedSlots, float startX, float y, boolean isPlayerZone, boolean isDraggingBoard, float cardWidth, float cardHeight, float spacing) {
+        for (int i = 0; i < rebalancedSlots.length; i++) {
+            if (i == uiState.boardHoverSlot) {
+                // Render the gap where the dragged card will go
+                batch.setColor(new Color(0.3f, 0.5f, 0.3f, 0.3f));  // Green semi-transparent
+                float gapX = startX + i * (cardWidth + spacing);
+                batch.draw(RenderConstants.getPixelTexture(), gapX, y, cardWidth, cardHeight);
+                batch.setColor(Color.WHITE);
+            } else if (rebalancedSlots[i] != null) {
+                // Render the card
+                CardInstance card = gameState.cardRepository.find(rebalancedSlots[i]);
+                if (card != null) {
+                    float cardX = startX + i * (cardWidth + spacing);
+                    Color outlineColor = null;
+
+                    if (isPlayerZone) {
+                        if (card.getCurrentZone() == ZoneType.HAND && isCardPlayable(card)) {
+                            outlineColor = Color.GREEN;
+                        } else if (card.getCurrentZone() == ZoneType.BOARD && card.canAttack()) {
+                            outlineColor = Color.GREEN;
+                        }
+                    } else {
+                        if (isDraggingBoard && card.getCurrentZone() == ZoneType.BOARD) {
+                            outlineColor = Color.RED;
+                        }
+                    }
+
+                    renderCard(batch, card, cardX, y, cardWidth, cardHeight, outlineColor);
+                }
             }
         }
     }
@@ -157,6 +283,13 @@ public class GameRenderer implements GameEventListener {
      * Renders a single card with its stats.
      */
     private void renderCard(Batch batch, CardInstance card, float x, float y, float w, float h) {
+        renderCard(batch, card, x, y, w, h, null);
+    }
+
+    /**
+     * Renders a single card with optional outline color.
+     */
+    private void renderCard(Batch batch, CardInstance card, float x, float y, float w, float h, Color outlineColor) {
         String templateId = card.getTemplateId();
 
         // Try to use card texture, fall back to colored rectangle
@@ -171,6 +304,15 @@ public class GameRenderer implements GameEventListener {
             batch.draw(RenderConstants.getPixelTexture(), x, y, w, h);
             batch.setColor(Color.WHITE);
             batch.draw(RenderConstants.getPixelTexture(), x, y + h - 8, w, 2);  // Top border
+        }
+
+        // Draw colored outline based on context
+        if (outlineColor != null) {
+            batch.setColor(outlineColor);
+            batch.draw(RenderConstants.getPixelTexture(), x, y, w, 3);  // Bottom
+            batch.draw(RenderConstants.getPixelTexture(), x, y + h - 3, w, 3);  // Top
+            batch.draw(RenderConstants.getPixelTexture(), x, y, 3, h);  // Left
+            batch.draw(RenderConstants.getPixelTexture(), x + w - 3, y, 3, h);  // Right
         }
 
         // Draw card stats on top
@@ -241,6 +383,25 @@ public class GameRenderer implements GameEventListener {
     }
 
     /**
+     * Checks if a card can be played from hand.
+     */
+    private boolean isCardPlayable(CardInstance card) {
+        PlayerState player = gameState.player1;
+        if (player.getHand().findSlot(card.getInstanceId()) == -1) {
+            return false;
+        }
+
+        // Check if it's player1's turn
+        if (!gameState.turn.getActivePlayerId().equals("player1")) {
+            return false;
+        }
+
+        // Check if player can afford it and board not full
+        int cost = CardRegistry.get(card.getTemplateId()).baseCost;
+        return player.canAfford(cost) && !player.getBoard().isFull();
+    }
+
+    /**
      * Renders a player's hand with zone boundary.
      */
     private void renderHand(Batch batch, PlayerState player, boolean isPlayer1) {
@@ -251,7 +412,7 @@ public class GameRenderer implements GameEventListener {
         float handX = centerX - handWidth / 2;
 
         if (isPlayer1) {
-            // MY hand at bottom
+            // MY hand at bottom (y=0 is bottom in y-up coords)
             float handY = 0f;
 
             // Draw zone boundary for hand
@@ -260,12 +421,12 @@ public class GameRenderer implements GameEventListener {
             batch.setColor(Color.WHITE);
             batch.draw(RenderConstants.getPixelTexture(), handX, handY + handHeight, handWidth, 2f);  // Top line
 
-            // Render cards centered in hand zone
-            float cardsStartX = handX + 90f;
-            renderZoneCards(batch, handZone, cardsStartX, handY + 10f, true);
+            // Render cards centered in hand zone (10px margin, cards at y=20 to stay within boundary)
+            float cardsStartX = handX + 10f;
+            renderZoneCards(batch, handZone, cardsStartX, handY + 20f, true);
         } else {
-            // Enemy hand at top - show card count instead of individual cards
-            float handY = 850f;
+            // Enemy hand at top (y=860+ is near top in y-up coords)
+            float handY = 860f;
 
             // Draw zone boundary
             batch.setColor(new Color(0.3f, 0.3f, 0.2f, 0.5f));
@@ -282,13 +443,14 @@ public class GameRenderer implements GameEventListener {
     }
 
     /**
-     * Renders a player's hero on the left side.
+     * Renders a player's hero centered on the screen.
      */
     private void renderHero(Batch batch, PlayerState player, boolean isPlayer1) {
-        float x = 20f;
         float w = 180f;
-        float h = 130f;
-        float y = isPlayer1 ? 70f : 710f;  // Player hero: y=70-200, Enemy hero: y=710-840
+        float h = 110f;
+        float centerX = 900f;  // Center of 1800px screen
+        float x = centerX - w / 2;  // Center the hero box
+        float y = isPlayer1 ? 145f : 715f;  // Player hero: y=145-255, Enemy hero: y=715-825
 
         HeroState hero = player.getHero();
 
@@ -299,6 +461,15 @@ public class GameRenderer implements GameEventListener {
         // Draw inner area (darker)
         batch.setColor(new Color(0.3f, 0.25f, 0.15f, 1f));
         batch.draw(RenderConstants.getPixelTexture(), x + 5f, y + 5f, w - 10f, h - 10f);
+
+        // Draw red outline if enemy hero is a valid attack target (only if dragged card can attack)
+        if (!isPlayer1 && "board".equals(uiState.dragSourceZone) && uiState.draggingCard != null && uiState.draggingCard.canAttack()) {
+            batch.setColor(Color.RED);
+            batch.draw(RenderConstants.getPixelTexture(), x, y, w, 3);  // Bottom
+            batch.draw(RenderConstants.getPixelTexture(), x, y + h - 3, w, 3);  // Top
+            batch.draw(RenderConstants.getPixelTexture(), x, y, 3, h);  // Left
+            batch.draw(RenderConstants.getPixelTexture(), x + w - 3, y, 3, h);  // Right
+        }
 
         // Draw hero title and stats
         if (font != null) {
@@ -318,40 +489,7 @@ public class GameRenderer implements GameEventListener {
         if (isPlayer1) {
             // MY mana and draw deck: bottom right corner
             float manaX = 1800f - 150f;
-            float manaY = 20f;
-            float manaW = 130f;
-            float manaH = 70f;
-
-            batch.setColor(new Color(0.2f, 0.3f, 0.6f, 1f));  // Blue
-            batch.draw(RenderConstants.getPixelTexture(), manaX, manaY, manaW, manaH);
-
-            if (font != null) {
-                batch.setColor(Color.CYAN);
-                font.draw(batch, "MANA", manaX + 20f, manaY + 50f);
-                batch.setColor(Color.WHITE);
-                font.draw(batch, player.getCurrentMana() + " / " + player.getTotalMana(),
-                    manaX + 25f, manaY + 25f);
-            }
-
-            // Draw deck below mana
-            float deckX = manaX;
-            float deckY = manaY - 80f;
-            float deckW = 130f;
-            float deckH = 60f;
-
-            batch.setColor(new Color(0.3f, 0.3f, 0.3f, 1f));  // Gray
-            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, deckH);
-            batch.setColor(Color.WHITE);
-            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, 2f);  // Top line
-
-            if (font != null) {
-                batch.setColor(Color.WHITE);
-                font.draw(batch, "Deck: " + player.getDrawDeck().size(), deckX + 10f, deckY + 35f);
-            }
-        } else {
-            // Enemy mana and draw deck: top right corner
-            float manaX = 1800f - 150f;
-            float manaY = 900f;
+            float manaY = 15f;
             float manaW = 130f;
             float manaH = 70f;
 
@@ -368,14 +506,47 @@ public class GameRenderer implements GameEventListener {
 
             // Draw deck above mana
             float deckX = manaX;
-            float deckY = manaY + 70f;
+            float deckY = 100f;
             float deckW = 130f;
             float deckH = 60f;
 
             batch.setColor(new Color(0.3f, 0.3f, 0.3f, 1f));  // Gray
             batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, deckH);
             batch.setColor(Color.WHITE);
-            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY + deckH, deckW, 2f);  // Top line
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, 2f);  // Top line
+
+            if (font != null) {
+                batch.setColor(Color.WHITE);
+                font.draw(batch, "Deck: " + player.getDrawDeck().size(), deckX + 10f, deckY + 35f);
+            }
+        } else {
+            // Enemy mana and draw deck: top right corner
+            float manaX = 1800f - 150f;
+            float manaY = 915f;
+            float manaW = 130f;
+            float manaH = 70f;
+
+            batch.setColor(new Color(0.2f, 0.3f, 0.6f, 1f));  // Blue
+            batch.draw(RenderConstants.getPixelTexture(), manaX, manaY, manaW, manaH);
+
+            if (font != null) {
+                batch.setColor(Color.CYAN);
+                font.draw(batch, "MANA", manaX + 20f, manaY + 50f);
+                batch.setColor(Color.WHITE);
+                font.draw(batch, player.getCurrentMana() + " / " + player.getTotalMana(),
+                    manaX + 25f, manaY + 25f);
+            }
+
+            // Draw deck below mana
+            float deckX = manaX;
+            float deckY = 840f;
+            float deckW = 130f;
+            float deckH = 60f;
+
+            batch.setColor(new Color(0.3f, 0.3f, 0.3f, 1f));  // Gray
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, deckH);
+            batch.setColor(Color.WHITE);
+            batch.draw(RenderConstants.getPixelTexture(), deckX, deckY, deckW, 2f);  // Top line
 
             if (font != null) {
                 batch.setColor(Color.WHITE);
@@ -387,24 +558,24 @@ public class GameRenderer implements GameEventListener {
     }
 
     /**
-     * Renders turn and game info.
+     * Renders turn and game info at top right.
      */
     private void renderTurnInfo(Batch batch) {
         if (font != null) {
             String activePlayer = gameState.turn.getActivePlayerId();
 
-            // Draw turn indicator background
-            batch.setColor(new Color(0.1f, 0.1f, 0.1f, 0.7f));
-            batch.draw(RenderConstants.getPixelTexture(), 600f, 450f, 600f, 100f);
+            // Draw turn indicator at top right
+            float infoX = 1500f;
+            float infoY = 900f;
 
             // Draw turn text
             String turnText = activePlayer.equals("player1") ? "YOUR TURN" : "ENEMY TURN";
             batch.setColor(activePlayer.equals("player1") ? Color.GREEN : Color.RED);
-            font.draw(batch, turnText, 750f, 500f);
+            font.draw(batch, turnText, infoX, infoY);
 
             // Draw turn number
             batch.setColor(Color.WHITE);
-            font.draw(batch, "Turn: " + gameState.turn.getTurnNumber(), 750f, 470f);
+            font.draw(batch, "Turn: " + gameState.turn.getTurnNumber(), infoX, infoY - 25f);
         }
     }
 

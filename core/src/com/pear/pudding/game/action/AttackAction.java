@@ -63,7 +63,7 @@ public class AttackAction implements GameAction {
             // Check for deaths
             if (attacker.getCurrentHealth() <= 0) {
                 attacker.setCurrentZone(ZoneType.DISCARD);
-                opponent.getBoard().removeCard(attackerId);
+                state.getPlayer(playerId).getBoard().removeCard(attackerId);
             }
             if (target.getCurrentHealth() <= 0) {
                 target.setCurrentZone(ZoneType.DISCARD);

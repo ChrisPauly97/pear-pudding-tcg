@@ -7,15 +7,7 @@ java {
 
 sourceSets.main.java.srcDirs = [ "src/" ]
 sourceSets.main.java.excludes = [
-    "test/**",
-    "com/pear/pudding/model/**",
-    "com/pear/pudding/player/**",
-    "com/pear/pudding/card/**",
-    "com/pear/pudding/input/**",
-    "com/pear/pudding/ai/**",
-    "com/pear/pudding/screen/GameLoadingScreen.java",
-    "com/pear/pudding/screen/LoadingScreen.java",
-    "com/pear/pudding/screen/GameOverScreen.java"
+    "test/**"
 ]
 
 eclipse.project.name = appName + "-core"

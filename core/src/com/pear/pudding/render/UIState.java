@@ -24,9 +24,13 @@ public class UIState {
     public int[] boardDisplaySlots;  // rebalanced board positions
     public int[] handDisplaySlots;   // rebalanced hand positions
 
+    // Drag snapshot for cancellation
+    public java.util.Map<String, String[]> zoneSnapshots;  // snapshot before drag
+
     public UIState() {
         this.boardDisplaySlots = new int[5];
         this.handDisplaySlots = new int[5];
+        this.zoneSnapshots = new java.util.HashMap<>();
         resetDisplaySlots();
     }
 
@@ -50,6 +54,7 @@ public class UIState {
         boardHoverSlot = null;
         handHoverSlot = null;
         zoomedCard = null;
+        zoneSnapshots.clear();
         resetDisplaySlots();
     }
 }

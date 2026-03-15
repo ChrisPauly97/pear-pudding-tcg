@@ -11,7 +11,8 @@
       "Bash(gradle desktop:build:*)",
       "Bash(timeout 10 gradle desktop:run:*)",
       "Bash(gradle desktop:dist:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(xargs basename:*)"
     ]
   }
 }

@@ -71,7 +71,7 @@ public class MenuScreen implements Screen {
         playButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
-                game.setScreen(new PearPudding(game, manager));
+                game.setScreen(new WorldScreen(game));
             }
         });
         optionsButton.addListener(new ClickListener() {

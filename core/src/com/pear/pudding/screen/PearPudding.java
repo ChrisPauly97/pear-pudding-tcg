@@ -17,6 +17,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.pear.pudding.MyGame;
 import com.pear.pudding.game.action.ActionResult;
+import com.pear.pudding.game.action.AttackAction;
 import com.pear.pudding.game.action.DrawCardAction;
 import com.pear.pudding.game.action.EndTurnAction;
 import com.pear.pudding.game.action.GameAction;
@@ -28,6 +29,7 @@ import com.pear.pudding.game.event.GameEventBus;
 import com.pear.pudding.game.state.*;
 import com.pear.pudding.render.GameRenderer;
 import com.pear.pudding.render.UIState;
+import com.pear.pudding.world.EnemyNPC;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,9 +60,19 @@ public class PearPudding implements Screen, InputProcessor {
     private float aiActionDelay = 0f;
     private List<GameAction> aiActions = new ArrayList<>();
 
+    // World integration (null if standalone battle)
+    private final WorldScreen worldScreen;
+    private final EnemyNPC triggeredEnemy;
+
     public PearPudding(MyGame game, AssetManager manager) {
+        this(game, manager, null, null);
+    }
+
+    public PearPudding(MyGame game, AssetManager manager, WorldScreen worldScreen, EnemyNPC triggeredEnemy) {
         this.game = game;
         this.manager = manager;
+        this.worldScreen = worldScreen;
+        this.triggeredEnemy = triggeredEnemy;
 
         // Initialize camera and stage (use standard LibGDX: y-up, origin at bottom-left)
         camera = new OrthographicCamera();
@@ -197,6 +209,12 @@ public class PearPudding implements Screen, InputProcessor {
             eventBus.publishAll(gameState.eventLog);
             gameState.eventLog.clear();
 
+            // Consolidate boards after attacks to clean up dead cards
+            if (action instanceof AttackAction) {
+                gameState.player1.getBoard().consolidate();
+                gameState.player2.getBoard().consolidate();
+            }
+
             // Schedule next action or end turn
             if (aiActions.isEmpty()) {
                 isAITurn = false;
@@ -215,6 +233,11 @@ public class PearPudding implements Screen, InputProcessor {
         try {
             ScreenUtils.clear(184, 176, 155, 0);
 
+            // Check for game over
+            if (checkGameOver()) {
+                return;
+            }
+
             // Execute AI actions if it's AI's turn
             executeAITurn();
 
@@ -229,6 +252,31 @@ public class PearPudding implements Screen, InputProcessor {
         } catch (Exception e) {
             Gdx.app.error("PearPudding", "Error during rendering", e);
         }
+    }
+
+    /**
+     * Checks if the game is over (either hero at 0 or below health).
+     */
+    private boolean checkGameOver() {
+        HeroState hero1 = gameState.player1.getHero();
+        HeroState hero2 = gameState.player2.getHero();
+
+        if (hero1.getHealth() <= 0) {
+            if (worldScreen != null) {
+                worldScreen.onBattleLost();
+            } else {
+                game.setScreen(new GameOverScreen(game, "Enemy"));
+            }
+            return true;
+        } else if (hero2.getHealth() <= 0) {
+            if (worldScreen != null) {
+                worldScreen.onBattleWon(triggeredEnemy);
+            } else {
+                game.setScreen(new GameOverScreen(game, "You"));
+            }
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -283,6 +331,17 @@ public class PearPudding implements Screen, InputProcessor {
             uiState.draggingCard = card;
             uiState.dragSourceZone = "hand";
             uiState.dragOffset = new com.badlogic.gdx.math.Vector2(mouseCoords.x, mouseCoords.y);
+            snapshotZones();
+            return true;
+        }
+
+        // Try to pick a card from the player's board
+        card = pickCardFromBoard(mouseCoords.x, mouseCoords.y);
+        if (card != null) {
+            uiState.draggingCard = card;
+            uiState.dragSourceZone = "board";
+            uiState.dragOffset = new com.badlogic.gdx.math.Vector2(mouseCoords.x, mouseCoords.y);
+            snapshotZones();
             return true;
         }
 
@@ -296,12 +355,20 @@ public class PearPudding implements Screen, InputProcessor {
         Vector3 mouseCoords = camera.unproject(new Vector3(screenX, screenY, camera.position.z));
 
         // Try to resolve drop
-        resolveDrop(mouseCoords.x, mouseCoords.y);
+        boolean dropResolved = resolveDrop(mouseCoords.x, mouseCoords.y);
+
+        // If drop was invalid, restore zones
+        if (!dropResolved) {
+            restoreZones();
+        }
 
         // Clear drag state
         uiState.draggingCard = null;
         uiState.dragOffset = null;
         uiState.dragSourceZone = null;
+        uiState.zoneSnapshots.clear();
+        uiState.boardHoverSlot = null;
+        uiState.handHoverSlot = null;
 
         return true;
     }
@@ -322,6 +389,9 @@ public class PearPudding implements Screen, InputProcessor {
         Vector3 mouseCoords = camera.unproject(new Vector3(screenX, screenY, camera.position.z));
         uiState.dragOffset.set(mouseCoords.x, mouseCoords.y);
 
+        // Handle hover animations for drop zones
+        updateHoverSlots(mouseCoords.x, mouseCoords.y);
+
         return true;
     }
 
@@ -329,19 +399,46 @@ public class PearPudding implements Screen, InputProcessor {
      * Attempts to pick a card from player1's hand at screen coordinates.
      */
     private CardInstance pickCardFromHand(float x, float y) {
-        // Player hand is at y 0-140 (bottom of screen with y-up coords), centered x
+        // Player hand is at y 0-140 (bottom of screen), centered x
         if (y < 0 || y > 140) return null;
 
         ZoneState hand = gameState.player1.getHand();
         float cardWidth = 120f;
         float spacing = 20f;
+        float cardHeight = 160f;
         float handCenterX = 900f;  // Center of 1800px screen
-        float handStartX = handCenterX - 350f;  // Center 5 cards
+        float handStartX = handCenterX - 350f;  // Center 5 cards (700px width)
+        float cardY = 20f;  // Cards rendered at y=20 (handY + 20)
 
         for (int i = 0; i < hand.capacity; i++) {
             String instanceId = hand.getCardAt(i);
             if (instanceId != null) {
-                float cardX = handStartX + 90f + i * (cardWidth + spacing);
+                float cardX = handStartX + 10f + i * (cardWidth + spacing);
+                if (x >= cardX && x < cardX + cardWidth && y >= cardY && y < cardY + cardHeight) {
+                    return gameState.cardRepository.find(instanceId);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Attempts to pick a card from player1's board at screen coordinates.
+     */
+    private CardInstance pickCardFromBoard(float x, float y) {
+        // Player board is at y 290-430 (centered x)
+        if (y < 290 || y > 430) return null;
+
+        ZoneState board = gameState.player1.getBoard();
+        float cardWidth = 120f;
+        float spacing = 20f;
+        float boardCenterX = 900f;  // Center of 1800px screen
+        float boardStartX = boardCenterX - 350f;  // Center 5 cards (700px width)
+
+        for (int i = 0; i < board.capacity; i++) {
+            String instanceId = board.getCardAt(i);
+            if (instanceId != null) {
+                float cardX = boardStartX + 10f + i * (cardWidth + spacing);
                 if (x >= cardX && x < cardX + cardWidth) {
                     return gameState.cardRepository.find(instanceId);
                 }
@@ -351,26 +448,148 @@ public class PearPudding implements Screen, InputProcessor {
     }
 
     /**
-     * Resolves where the dragged card should be played.
+     * Attempts to pick a card from player2's board at screen coordinates.
      */
-    private void resolveDrop(float x, float y) {
-        if (uiState.draggingCard == null) return;
+    private CardInstance findEnemyBoardCardAt(float x, float y) {
+        // Enemy board is at y 550-690 (centered x)
+        if (y < 550 || y > 690) return null;
+
+        ZoneState board = gameState.player2.getBoard();
+        float cardWidth = 120f;
+        float spacing = 20f;
+        float boardCenterX = 900f;  // Center of 1800px screen
+        float boardStartX = boardCenterX - 350f;  // Center 5 cards (700px width)
+
+        for (int i = 0; i < board.capacity; i++) {
+            String instanceId = board.getCardAt(i);
+            if (instanceId != null) {
+                float cardX = boardStartX + 10f + i * (cardWidth + spacing);
+                if (x >= cardX && x < cardX + cardWidth) {
+                    return gameState.cardRepository.find(instanceId);
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Checks if a coordinate hits the enemy hero box.
+     */
+    private boolean isEnemyHeroHit(float x, float y) {
+        // Enemy hero is centered, width 180, height 110, at y=715-825
+        float centerX = 900f;
+        float heroX = centerX - 90f;
+        float heroY = 715f;
+        return x >= heroX && x <= heroX + 180f && y >= heroY && y <= heroY + 110f;
+    }
+
+    /**
+     * Resolves where the dragged card should be played. Returns true if drop was successful.
+     */
+    private boolean resolveDrop(float x, float y) {
+        if (uiState.draggingCard == null) return false;
 
         CardInstance card = uiState.draggingCard;
         String activePlayer = gameState.turn.getActivePlayerId();
 
-        // Only allow playing cards if it's player1's turn
-        if (!activePlayer.equals("player1")) return;
+        // Only allow actions if it's player1's turn
+        if (!activePlayer.equals("player1")) return false;
 
-        // Check if dropped on player board (y ~200-350, centered x)
-        if (y >= 200 && y <= 350) {
-            // Try to play card to board
-            GameAction action = new PlayCardAction("player1", card.getInstanceId(), -1);
-            ActionResult result = action.execute(gameState);
-            if (result.success) {
-                eventBus.publishAll(gameState.eventLog);
-                gameState.eventLog.clear();
+        // Handle hand card drops
+        if ("hand".equals(uiState.dragSourceZone)) {
+            // Check if dropped on player board (y 290-430, centered x)
+            if (y >= 290 && y <= 430) {
+                // Try to play card to board
+                GameAction action = new PlayCardAction("player1", card.getInstanceId(), -1);
+                ActionResult result = action.execute(gameState);
+                if (result.success) {
+                    eventBus.publishAll(gameState.eventLog);
+                    gameState.eventLog.clear();
+                    // Consolidate hand after successful play
+                    gameState.player1.getHand().consolidate();
+                    return true;
+                }
             }
+            return false;
+        }
+
+        // Handle board card drops (attacks)
+        if ("board".equals(uiState.dragSourceZone)) {
+            String attackerId = card.getInstanceId();
+
+            // Try enemy board card
+            CardInstance target = findEnemyBoardCardAt(x, y);
+            if (target != null) {
+                GameAction action = new AttackAction("player1", attackerId, target.getInstanceId());
+                ActionResult result = action.execute(gameState);
+                if (result.success) {
+                    eventBus.publishAll(gameState.eventLog);
+                    gameState.eventLog.clear();
+                    // Consolidate boards after cards are removed
+                    gameState.player1.getBoard().consolidate();
+                    gameState.player2.getBoard().consolidate();
+                    return true;
+                }
+                return false;
+            }
+
+            // Try enemy hero
+            if (isEnemyHeroHit(x, y)) {
+                GameAction action = new AttackAction("player1", attackerId, "player2");
+                ActionResult result = action.execute(gameState);
+                if (result.success) {
+                    eventBus.publishAll(gameState.eventLog);
+                    gameState.eventLog.clear();
+                    // Consolidate boards after cards are removed
+                    gameState.player1.getBoard().consolidate();
+                    return true;
+                }
+                return false;
+            }
+
+            // If dropped over board but not on a valid target, reorder if hoverSlot is set
+            if (y >= 290 && y <= 430 && uiState.boardHoverSlot != null) {
+                rebalanceBoardZone(uiState.boardHoverSlot);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Rebalances the board zone to match the hover slot (moves card within board).
+     */
+    private void rebalanceBoardZone(int targetSlot) {
+        ZoneState board = gameState.player1.getBoard();
+        String cardId = uiState.draggingCard.getInstanceId();
+
+        // Collect all cards in order
+        java.util.List<String> allCards = new java.util.ArrayList<>();
+        int draggedCardCurrentSlot = -1;
+        for (int i = 0; i < board.capacity; i++) {
+            String id = board.getCardAt(i);
+            if (id != null) {
+                allCards.add(id);
+                if (id.equals(cardId)) {
+                    draggedCardCurrentSlot = allCards.size() - 1;
+                }
+            }
+        }
+
+        // Remove dragged card from its current position
+        if (draggedCardCurrentSlot >= 0) {
+            allCards.remove(draggedCardCurrentSlot);
+        }
+
+        // Insert dragged card at target position (capped at size)
+        int insertPos = Math.min(targetSlot, allCards.size());
+        allCards.add(insertPos, cardId);
+
+        // Clear board and rebuild with new order
+        board.clear();
+        for (int i = 0; i < allCards.size(); i++) {
+            board.addCard(allCards.get(i), i);
         }
     }
 
@@ -382,5 +601,83 @@ public class PearPudding implements Screen, InputProcessor {
     @Override
     public boolean scrolled(float amountX, float amountY) {
         return false;
+    }
+
+    /**
+     * Snapshots all zones before starting a drag (for restoration on cancel).
+     */
+    private void snapshotZones() {
+        uiState.zoneSnapshots.clear();
+        uiState.zoneSnapshots.put("hand", gameState.player1.getHand().snapshot());
+        uiState.zoneSnapshots.put("board", gameState.player1.getBoard().snapshot());
+        uiState.zoneSnapshots.put("enemy_board", gameState.player2.getBoard().snapshot());
+        uiState.zoneSnapshots.put("draw_deck", gameState.player1.getDrawDeck().snapshot());
+    }
+
+    /**
+     * Restores zones to their pre-drag state.
+     */
+    private void restoreZones() {
+        String[] handSnap = uiState.zoneSnapshots.get("hand");
+        if (handSnap != null) {
+            gameState.player1.getHand().restore(handSnap);
+        }
+        String[] boardSnap = uiState.zoneSnapshots.get("board");
+        if (boardSnap != null) {
+            gameState.player1.getBoard().restore(boardSnap);
+        }
+        String[] enemyBoardSnap = uiState.zoneSnapshots.get("enemy_board");
+        if (enemyBoardSnap != null) {
+            gameState.player2.getBoard().restore(enemyBoardSnap);
+        }
+    }
+
+    /**
+     * Updates hover slots for drop zones during drag.
+     */
+    private void updateHoverSlots(float x, float y) {
+        if ("hand".equals(uiState.dragSourceZone)) {
+            // Check if hovering over player board
+            if (y >= 290 && y <= 430) {
+                uiState.boardHoverSlot = findBoardHoverSlot(x);
+            } else {
+                uiState.boardHoverSlot = null;
+            }
+            uiState.handHoverSlot = null;
+        } else if ("board".equals(uiState.dragSourceZone)) {
+            // Also track board hover for reordering on board
+            if (y >= 290 && y <= 430) {
+                uiState.boardHoverSlot = findBoardHoverSlot(x);
+            } else {
+                uiState.boardHoverSlot = null;
+            }
+            uiState.handHoverSlot = null;
+        }
+    }
+
+    /**
+     * Finds which board slot the mouse is over (for hover gap animation).
+     */
+    private Integer findBoardHoverSlot(float x) {
+        ZoneState board = gameState.player1.getBoard();
+        float cardWidth = 120f;
+        float spacing = 20f;
+        float boardCenterX = 900f;
+        float boardStartX = boardCenterX - 350f;
+
+        for (int i = 0; i < board.capacity; i++) {
+            float slotX = boardStartX + 10f + i * (cardWidth + spacing);
+            float slotRight = slotX + cardWidth;
+            if (x >= slotX && x < slotRight) {
+                return i;
+            }
+        }
+        // If hovering past all cards, find the first empty slot
+        for (int i = 0; i < board.capacity; i++) {
+            if (board.getCardAt(i) == null) {
+                return i;
+            }
+        }
+        return null;
     }
 }

@@ -124,4 +124,19 @@ public class ZoneState {
     public void clear() {
         Arrays.fill(slots, null);
     }
+
+    /**
+     * Consolidates cards to the left (shifts remaining cards to fill gaps).
+     * Used after removing cards to keep hand compact.
+     */
+    public void consolidate() {
+        String[] consolidated = new String[capacity];
+        int writeIndex = 0;
+        for (int i = 0; i < slots.length; i++) {
+            if (slots[i] != null) {
+                consolidated[writeIndex++] = slots[i];
+            }
+        }
+        System.arraycopy(consolidated, 0, slots, 0, capacity);
+    }
 }
