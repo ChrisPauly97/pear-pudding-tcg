@@ -43,6 +43,11 @@ public class AssetLoadingScreen implements Screen {
             manager.load("grass" + i + ".png", com.badlogic.gdx.graphics.Texture.class);
         }
 
+        // Animated grass frames for wind flipbook (8 frames, 64x32 each)
+        for (int i = 0; i < 8; i++) {
+            manager.load("grass_anim" + i + ".png", com.badlogic.gdx.graphics.Texture.class);
+        }
+
         // World textures: wall variants
         for (int i = 0; i < 8; i++) {
             manager.load("wall" + i + ".png", com.badlogic.gdx.graphics.Texture.class);

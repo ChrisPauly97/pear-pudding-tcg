@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
+import com.badlogic.gdx.graphics.glutils.ShaderProgram;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
@@ -17,6 +18,7 @@ import com.pear.pudding.input.InputController;
 import com.pear.pudding.world.Chest;
 import com.pear.pudding.world.Door;
 import com.pear.pudding.world.EnemyNPC;
+import com.pear.pudding.world.WindParticle;
 import com.pear.pudding.world.WorldMap;
 
 import java.util.ArrayList;
@@ -52,6 +54,21 @@ public class WorldScreen implements Screen, InputProcessor {
     private Texture enemyTexture;
     private Texture chestTexture;
     private Sound footstepSound;
+
+    // --- Wind system ---
+    private ShaderProgram grassShader;
+    private boolean grassShaderActive = false;
+    private float windTime     = 0f;
+    private float windStrength = 0f;   // [0, 1], squared sine curve
+
+    // Flipbook: 8 animated grass frames (grass_anim0..7)
+    private Texture[] grassAnimTextures;
+    private int windAnimFrame = 0;
+
+    // Particles: wind-driven leaves and pollen
+    private final List<WindParticle> particles = new ArrayList<>(40);
+    private float particleSpawnAccum = 0f;
+    private static final int MAX_PARTICLES = 40;
 
     // Pooled collections for rendering (reused every frame to avoid allocations)
     private final List<float[]> entitiesPool = new ArrayList<>();
@@ -206,6 +223,26 @@ public class WorldScreen implements Screen, InputProcessor {
                 grassHillLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 grassHillRight = game.manager.get("grasshill_right.png", Texture.class);
                 grassHillRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+
+                // Animated grass frames for wind flipbook
+                grassAnimTextures = new Texture[8];
+                for (int i = 0; i < 8; i++) {
+                    grassAnimTextures[i] = game.manager.get("grass_anim" + i + ".png", Texture.class);
+                    grassAnimTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                }
+
+                // Grass wind shader (loaded inline — not via AssetManager)
+                ShaderProgram.pedantic = false;
+                grassShader = new ShaderProgram(
+                    Gdx.files.internal("shaders/grass.vert").readString(),
+                    Gdx.files.internal("shaders/grass.frag").readString()
+                );
+                if (!grassShader.isCompiled()) {
+                    Gdx.app.error("WindShader", "Grass shader failed to compile: " + grassShader.getLog());
+                    grassShader.dispose();
+                    grassShader = null;
+                }
+
                 brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
                 brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
@@ -257,6 +294,18 @@ public class WorldScreen implements Screen, InputProcessor {
     }
 
     private void update(float delta) {
+        // Wind cycle: sine wave peaking every 30 seconds, squared for a soft buildup
+        windTime += delta;
+        float rawWind = (float) Math.sin(windTime * Math.PI * 2.0 / 30.0);
+        rawWind = Math.max(0f, rawWind);
+        windStrength = rawWind * rawWind;
+
+        // Flipbook frame: 8fps, per-tile stagger applied at draw time
+        windAnimFrame = (int)(windTime * 8f) % 8;
+
+        // Particle update
+        updateParticles(delta);
+
         // Iso-remapped controls: W/S = northeast/southwest, A/D = northwest/southeast
         float dx = 0, dy = 0;
         if (inputController.moveUp)    { dx += PLAYER_SPEED; dy += PLAYER_SPEED; }
@@ -347,6 +396,61 @@ public class WorldScreen implements Screen, InputProcessor {
         camera.update();
     }
 
+    // --- Shader helpers ---
+
+    private void activateGrassShader() {
+        if (grassShader != null && !grassShaderActive) {
+            worldBatch.setShader(grassShader);   // auto-flushes current batch
+            grassShader.setUniformf("u_windTime",     windTime);
+            grassShader.setUniformf("u_windStrength", windStrength);
+            grassShaderActive = true;
+        }
+    }
+
+    private void deactivateGrassShader() {
+        if (grassShaderActive) {
+            worldBatch.setShader(null);          // auto-flushes, restores default
+            grassShaderActive = false;
+        }
+    }
+
+    // --- Particle system ---
+
+    private void updateParticles(float delta) {
+        Iterator<WindParticle> it = particles.iterator();
+        while (it.hasNext()) {
+            WindParticle p = it.next();
+            p.life -= delta;
+            if (p.life <= 0f) { it.remove(); continue; }
+            p.x += p.vx * delta;
+            p.y += p.vy * delta;
+        }
+
+        if (windStrength > 0.2f && particles.size() < MAX_PARTICLES) {
+            particleSpawnAccum += windStrength * 2f * delta;   // up to 2/sec at full wind
+            while (particleSpawnAccum >= 1f && particles.size() < MAX_PARTICLES) {
+                particleSpawnAccum -= 1f;
+                spawnWindParticle();
+            }
+        } else {
+            particleSpawnAccum = 0f;
+        }
+    }
+
+    private void spawnWindParticle() {
+        // Spawn off the left edge of the visible camera area
+        float spawnX = camera.position.x - camera.viewportWidth  * 0.5f - 20f;
+        float spawnY = camera.position.y + (MathUtils.random() - 0.5f) * camera.viewportHeight * 0.8f;
+
+        float vx   = windStrength * (200f + MathUtils.random() * 100f);
+        float vy   = windStrength * (-30f + MathUtils.random() * 60f);
+        float life = 4f + MathUtils.random() * 4f;   // 4–8 seconds
+        float size = 2f + MathUtils.random() * 2f;   // 2–4 px
+        int   type = MathUtils.random() < 0.4f ? 0 : 1;  // 40% leaf, 60% pollen
+
+        particles.add(new WindParticle(spawnX, spawnY, vx, vy, life, size, type));
+    }
+
     private void handleJump() {
         if (!isJumping) {
             velocityZ = JUMP_VELOCITY;
@@ -427,6 +531,7 @@ public class WorldScreen implements Screen, InputProcessor {
         }
 
         // --- Tile rendering: back-to-front diagonal order ---
+        grassShaderActive = false;
         worldBatch.setProjectionMatrix(camera.combined);
         worldBatch.begin();
 
@@ -455,6 +560,12 @@ public class WorldScreen implements Screen, InputProcessor {
                     float trailDark = getTrailDarkening(tx, ty);
                     float tint = 1f - trailDark * TRAIL_MAX_DARKEN;
 
+                    // Flipbook: stagger per-tile so adjacent tiles don't sway in unison
+                    int tiledFrame = (windAnimFrame + (hash % 3)) % 8;
+                    Texture grassTex = (windStrength > 0.05f && grassAnimTextures != null)
+                        ? grassAnimTextures[tiledFrame] : grassTextures[hash % 16];
+                    activateGrassShader();
+
                     if (grassHeight > 0 && grassHillLeft != null) {
                         // Grass hill: draw stacked side faces then top grass diamond
                         byte leftH  = worldMap.getHeight(tx - 1, ty);
@@ -474,14 +585,15 @@ public class WorldScreen implements Screen, InputProcessor {
                         // Top grass diamond at final height
                         float topY = sy + grassHeight * WALL_FACE_H;
                         worldBatch.setColor(tint, tint, tint, 1f);
-                        worldBatch.draw(grassTextures[hash % 16], sx, topY, ISO_TW, ISO_TH);
+                        worldBatch.draw(grassTex, sx, topY, ISO_TW, ISO_TH);
                     } else {
                         // Flat grass
                         worldBatch.setColor(tint, tint, tint, 1f);
-                        worldBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
+                        worldBatch.draw(grassTex, sx, sy, ISO_TW, ISO_TH);
                     }
                     worldBatch.setColor(1, 1, 1, 1);  // reset for walls
                 } else if (tile != 0 && brickWallTop != null) {
+                    deactivateGrassShader();
                     // Isometric brick wall - stack by height
                     byte wallHeight = worldMap.getHeight(tx, ty);
 
@@ -519,6 +631,27 @@ public class WorldScreen implements Screen, InputProcessor {
         }
 
         worldBatch.end();
+        deactivateGrassShader();
+
+        // --- Particle render pass (wind-driven leaves and pollen) ---
+        if (!particles.isEmpty()) {
+            Gdx.gl.glEnable(GL20.GL_BLEND);
+            Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+            shapeRenderer.setProjectionMatrix(camera.combined);
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+            for (WindParticle p : particles) {
+                float alpha = p.life / p.maxLife < 0.2f ? (p.life / p.maxLife) / 0.2f : 1f;
+                if (p.type == 0) {
+                    shapeRenderer.setColor(0.4f, 0.55f, 0.2f, alpha);  // leaf green
+                    shapeRenderer.rect(p.x, p.y, p.size * 1.5f, p.size);
+                } else {
+                    shapeRenderer.setColor(0.9f, 0.85f, 0.3f, alpha);  // pollen yellow
+                    shapeRenderer.circle(p.x, p.y, p.size * 0.5f, 6);
+                }
+            }
+            shapeRenderer.end();
+            Gdx.gl.glDisable(GL20.GL_BLEND);
+        }
 
         // --- Entity rendering: Y-sorted so closer entities overdraw farther ones ---
         EnemyNPC nearby = worldMap.findNearbyEnemy(playerX, playerY, INTERACT_RANGE);
@@ -807,6 +940,7 @@ public class WorldScreen implements Screen, InputProcessor {
 
     @Override
     public void dispose() {
+        if (grassShader != null) grassShader.dispose();
         shapeRenderer.dispose();
         hudBatch.dispose();
         worldBatch.dispose();
