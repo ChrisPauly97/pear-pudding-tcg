@@ -16,7 +16,7 @@ public class WorldMap {
     private static final byte WALL = 1;
 
     private final byte[][] tiles;
-    private final byte[][] heights;  // Wall height in levels (0 = no wall, 1+ = height)
+    private final byte[][] heights;  // Height levels: walls = stacked brick height, grass = hill height
     private final List<EnemyNPC> enemies;
     private final List<Chest> chests;
     private final List<Door> doors;
@@ -110,9 +110,37 @@ public class WorldMap {
             heights[y][25] = 1;
         }
 
+        // Procedurally generate grass hills
+        generateHills();
+
         // Procedurally place enemies and chests with difficulty scaling
         // Difficulty increases from top-left (easier) to bottom-right (harder)
         generateEntitiesWithDifficulty();
+    }
+
+    /**
+     * Procedurally generate grass hill clusters across the map.
+     * Hills are purely visual (grass tiles with height > 0) and render with 3D side faces.
+     */
+    private void generateHills() {
+        Random hillRand = new Random(12345 + 77777);
+        int numClusters = 6;
+        for (int c = 0; c < numClusters; c++) {
+            int cx = hillRand.nextInt(MAP_WIDTH - 20) + 10;
+            int cy = hillRand.nextInt(MAP_HEIGHT - 20) + 10;
+            int radius = hillRand.nextInt(3) + 2;  // 2–4 tile radius
+            byte hillH = (byte) (hillRand.nextInt(2) + 1);  // height 1 or 2
+
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dy = -radius; dy <= radius; dy++) {
+                    int nx = cx + dx, ny = cy + dy;
+                    if (nx < 1 || nx >= MAP_WIDTH - 1 || ny < 1 || ny >= MAP_HEIGHT - 1) continue;
+                    if (tiles[ny][nx] == GRASS && dx * dx + dy * dy <= radius * radius) {
+                        heights[ny][nx] = hillH;
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -334,11 +362,11 @@ public class WorldMap {
             sb.append("\n");
         }
 
-        // Save heights (only for walls)
+        // Save heights for all tiles (walls and grass hills)
         sb.append("HEIGHTS\n");
         for (int y = 0; y < MAP_HEIGHT; y++) {
             for (int x = 0; x < MAP_WIDTH; x++) {
-                if (tiles[y][x] != 0) {  // Only save heights for walls
+                if (heights[y][x] != 0) {
                     sb.append(x).append(",").append(y).append(",").append((int) heights[y][x]).append("\n");
                 }
             }

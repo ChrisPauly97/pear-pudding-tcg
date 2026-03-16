@@ -41,6 +41,8 @@ public class WorldScreen implements Screen, InputProcessor {
     private final ShapeRenderer shapeRenderer;
     private BitmapFont font;
     private Texture[] grassTextures;
+    private Texture grassHillLeft;
+    private Texture grassHillRight;
     private Texture[] wallTextures;
     private Texture brickWallTop;
     private Texture brickWallFront;
@@ -200,6 +202,10 @@ public class WorldScreen implements Screen, InputProcessor {
                     wallTextures[i] = game.manager.get("wall" + i + ".png", Texture.class);
                     wallTextures[i].setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 }
+                grassHillLeft = game.manager.get("grasshill_left.png", Texture.class);
+                grassHillLeft.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
+                grassHillRight = game.manager.get("grasshill_right.png", Texture.class);
+                grassHillRight.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 brickWallTop = game.manager.get("wallbrick_top.png", Texture.class);
                 brickWallTop.setFilter(Texture.TextureFilter.Nearest, Texture.TextureFilter.Nearest);
                 brickWallFront = game.manager.get("wallbrick_front.png", Texture.class);
@@ -438,17 +444,42 @@ public class WorldScreen implements Screen, InputProcessor {
                 // Viewport cull (with margin for wall faces)
                 if (sx + ISO_TW < camera.position.x - 950) continue;
                 if (sx         > camera.position.x + 950) continue;
-                if (sy + ISO_TH + WALL_FACE_H < camera.position.y - 550) continue;
+                if (sy + ISO_TH + WALL_FACE_H * 3 < camera.position.y - 550) continue;
                 if (sy         > camera.position.y + 550) continue;
 
                 byte tile = worldMap.getTile(tx, ty);
                 int hash  = ((tx * 73856093) ^ (ty * 19349663)) & 0x7FFFFFFF;
 
                 if (tile == 0 && grassTextures != null) {
+                    byte grassHeight = worldMap.getHeight(tx, ty);
                     float trailDark = getTrailDarkening(tx, ty);
-                    float c = 1f - trailDark * TRAIL_MAX_DARKEN;
-                    worldBatch.setColor(c, c, c, 1f);
-                    worldBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
+                    float tint = 1f - trailDark * TRAIL_MAX_DARKEN;
+
+                    if (grassHeight > 0 && grassHillLeft != null) {
+                        // Grass hill: draw stacked side faces then top grass diamond
+                        byte leftH  = worldMap.getHeight(tx - 1, ty);
+                        byte rightH = worldMap.getHeight(tx + 1, ty);
+
+                        for (int level = 0; level < grassHeight; level++) {
+                            float levelY = level * WALL_FACE_H;
+                            if (leftH < grassHeight) {
+                                worldBatch.setColor(tint * 0.85f, tint * 0.85f, tint * 0.85f, 1f);
+                                worldBatch.draw(grassHillLeft, sx, sy + ISO_HALF_H + levelY, ISO_HALF_W, WALL_FACE_H);
+                            }
+                            if (rightH < grassHeight) {
+                                worldBatch.setColor(tint * 0.72f, tint * 0.72f, tint * 0.72f, 1f);
+                                worldBatch.draw(grassHillRight, sx + ISO_HALF_W, sy + ISO_HALF_H + levelY, ISO_HALF_W, WALL_FACE_H);
+                            }
+                        }
+                        // Top grass diamond at final height
+                        float topY = sy + grassHeight * WALL_FACE_H;
+                        worldBatch.setColor(tint, tint, tint, 1f);
+                        worldBatch.draw(grassTextures[hash % 16], sx, topY, ISO_TW, ISO_TH);
+                    } else {
+                        // Flat grass
+                        worldBatch.setColor(tint, tint, tint, 1f);
+                        worldBatch.draw(grassTextures[hash % 16], sx, sy, ISO_TW, ISO_TH);
+                    }
                     worldBatch.setColor(1, 1, 1, 1);  // reset for walls
                 } else if (tile != 0 && brickWallTop != null) {
                     // Isometric brick wall - stack by height

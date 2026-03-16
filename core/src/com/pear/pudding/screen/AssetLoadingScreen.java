@@ -48,6 +48,10 @@ public class AssetLoadingScreen implements Screen {
             manager.load("wall" + i + ".png", com.badlogic.gdx.graphics.Texture.class);
         }
 
+        // Isometric grass hill side faces
+        manager.load("grasshill_left.png", com.badlogic.gdx.graphics.Texture.class);
+        manager.load("grasshill_right.png", com.badlogic.gdx.graphics.Texture.class);
+
         // Isometric brick wall textures
         manager.load("wallbrick_top.png", com.badlogic.gdx.graphics.Texture.class);
         manager.load("wallbrick_front.png", com.badlogic.gdx.graphics.Texture.class);
